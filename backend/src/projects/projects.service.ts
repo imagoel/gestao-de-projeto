@@ -8,6 +8,7 @@ import { Prisma, ProjectRole, ProjectStatus } from '@prisma/client';
 
 import { ProjectAccessService } from '../common/services/project-access.service';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
+import { normalizeDateInput } from '../common/utils/normalize-date-input.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { publicUserSelect } from '../users/user-select';
 import { UsersService } from '../users/users.service';
@@ -85,7 +86,7 @@ export class ProjectsService {
         data: {
           name: createProjectDto.name,
           description: createProjectDto.description,
-          deadline: createProjectDto.deadline ?? null,
+          deadline: normalizeDateInput(createProjectDto.deadline),
           ownerId: createProjectDto.ownerId,
           status: ProjectStatus.ACTIVE,
         },
@@ -137,7 +138,9 @@ export class ProjectsService {
           name: updateProjectDto.name,
           description: updateProjectDto.description,
           deadline:
-            updateProjectDto.deadline === undefined ? undefined : updateProjectDto.deadline,
+            updateProjectDto.deadline === undefined
+              ? undefined
+              : normalizeDateInput(updateProjectDto.deadline),
           status: updateProjectDto.status,
           ownerId: updateProjectDto.ownerId,
         },

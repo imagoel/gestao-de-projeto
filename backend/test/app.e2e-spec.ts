@@ -114,11 +114,12 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto MVP',
         description: 'Projeto de teste',
+        deadline: '2026-07-01',
         ownerId: adminId,
       })
       .expect(201);
 
-    expect(response.body.deadline).toBeNull();
+    expect(response.body.deadline).toContain('2026-07-01');
     expect(response.body.board.columns).toHaveLength(3);
     expect(response.body.board.columns.map((column: { title: string }) => column.title)).toEqual([
       'A fazer',
@@ -200,9 +201,11 @@ describe('Gestao GTI API (e2e)', () => {
         description: 'Descricao opcional',
         assigneeId: member.id,
         priority: 'HIGH',
-        dueDate: '2026-07-10T00:00:00.000Z',
+        dueDate: '2026-07-10',
       })
       .expect(201);
+
+    expect(cardResponse.body.dueDate).toContain('2026-07-10');
 
     await request(app.getHttpServer())
       .patch(`/api/cards/${cardResponse.body.id}/move`)

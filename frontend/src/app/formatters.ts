@@ -3,12 +3,14 @@ import type { CardPriority, ProjectStatus } from '../types/api';
 const shortDateFormatter = new Intl.DateTimeFormat('pt-BR', {
   day: '2-digit',
   month: 'short',
+  timeZone: 'UTC',
 });
 
 const longDateFormatter = new Intl.DateTimeFormat('pt-BR', {
   day: '2-digit',
   month: '2-digit',
   year: 'numeric',
+  timeZone: 'UTC',
 });
 
 const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
@@ -33,12 +35,15 @@ export function getDueDateTone(value?: string | null) {
   }
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
   const dueDate = new Date(value);
-  dueDate.setHours(0, 0, 0, 0);
+  const dueDateUtc = Date.UTC(
+    dueDate.getUTCFullYear(),
+    dueDate.getUTCMonth(),
+    dueDate.getUTCDate(),
+  );
 
-  if (dueDate.getTime() < today.getTime()) {
+  if (dueDateUtc < todayUtc) {
     return 'task-due task-due-late';
   }
 

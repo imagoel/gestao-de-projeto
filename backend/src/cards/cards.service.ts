@@ -8,6 +8,7 @@ import { ProjectAccessService } from '../common/services/project-access.service'
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { publicUserSelect } from '../users/user-select';
+import { normalizeDateInput } from '../common/utils/normalize-date-input.util';
 import { CreateCardDto } from './dto/create-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
@@ -42,7 +43,7 @@ export class CardsService {
         description: createCardDto.description,
         assigneeId: createCardDto.assigneeId,
         priority: createCardDto.priority,
-        dueDate: createCardDto.dueDate,
+        dueDate: normalizeDateInput(createCardDto.dueDate),
         columnId,
         position,
       },
@@ -72,7 +73,7 @@ export class CardsService {
         description: updateCardDto.description,
         assigneeId: updateCardDto.assigneeId,
         priority: updateCardDto.priority,
-        dueDate: updateCardDto.dueDate,
+        dueDate: normalizeDateInput(updateCardDto.dueDate),
       },
       include: this.cardInclude,
     });
