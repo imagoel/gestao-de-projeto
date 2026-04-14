@@ -188,8 +188,8 @@ describe('Gestao GTI API (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         title: 'Card invalido',
-        assigneeId: member.id,
         priority: 'HIGH',
+        dueDate: '2026-07-09',
       })
       .expect(400);
 
@@ -201,11 +201,10 @@ describe('Gestao GTI API (e2e)', () => {
         description: 'Descricao opcional',
         assigneeId: member.id,
         priority: 'HIGH',
-        dueDate: '2026-07-10',
       })
       .expect(201);
 
-    expect(cardResponse.body.dueDate).toContain('2026-07-10');
+    expect(cardResponse.body.dueDate).toBeNull();
 
     await request(app.getHttpServer())
       .patch(`/api/cards/${cardResponse.body.id}/move`)

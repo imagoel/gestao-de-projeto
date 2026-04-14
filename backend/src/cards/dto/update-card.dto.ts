@@ -16,6 +16,7 @@ export class UpdateCardDto {
   @IsEnum(CardPriority)
   priority!: CardPriority;
 
+  @IsOptional()
   @IsDateString()
-  dueDate!: string;
+  dueDate?: string | null;
 }

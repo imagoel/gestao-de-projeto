@@ -167,7 +167,7 @@ export function ProjectBoardPage() {
       api.createCard(token!, createCardForm.columnId, {
         assigneeId: createCardForm.assigneeId,
         description: createCardForm.description || undefined,
-        dueDate: createCardForm.dueDate,
+        dueDate: createCardForm.dueDate || null,
         priority: createCardForm.priority,
         title: createCardForm.title,
       }),
@@ -193,7 +193,7 @@ export function ProjectBoardPage() {
       const savedCard = await api.updateCard(token!, selectedCardId, {
         assigneeId: editCardForm.assigneeId,
         description: editCardForm.description || undefined,
-        dueDate: editCardForm.dueDate,
+        dueDate: editCardForm.dueDate || null,
         priority: editCardForm.priority,
         title: editCardForm.title,
       });
@@ -488,7 +488,7 @@ export function ProjectBoardPage() {
     <AppShell
       title={projectQuery.data?.name ?? 'Quadro Kanban'}
       subtitle="Projetos / quadro"
-      copy="Board unico do MVP com colunas fixas, cards com responsavel, prioridade e prazo obrigatorios, colaboracao no detalhe do card e drag-and-drop no polimento."
+      copy="Board unico do MVP com colunas fixas, cards com responsavel e prioridade obrigatorios, prazo opcional, colaboracao no detalhe do card e drag-and-drop no polimento."
       action={
         <button
           className="primary-button"
@@ -629,7 +629,7 @@ export function ProjectBoardPage() {
       ) : null}
 
       <Modal
-        description="No MVP, o card so pode ser criado com titulo, responsavel, prioridade e prazo."
+        description="O card pode ser criado com titulo, responsavel e prioridade. O prazo agora e opcional."
         footer={
           <>
             <button className="secondary-button" onClick={() => setIsCreateModalOpen(false)} type="button">
@@ -764,10 +764,10 @@ export function ProjectBoardPage() {
           </div>
 
           <div className="field-group">
-            <label className="field-label" htmlFor="create-card-due-date">
-              Prazo
-            </label>
-            <input
+                  <label className="field-label" htmlFor="create-card-due-date">
+                    Prazo (opcional)
+                  </label>
+                  <input
               className="field-input"
               id="create-card-due-date"
               onChange={(event) =>
@@ -776,10 +776,9 @@ export function ProjectBoardPage() {
                   dueDate: event.target.value,
                 }))
               }
-              required
-              type="date"
-              value={createCardForm.dueDate}
-            />
+                    type="date"
+                    value={createCardForm.dueDate}
+                  />
           </div>
 
           {createError ? <p className="form-error">{createError}</p> : null}
@@ -940,7 +939,7 @@ export function ProjectBoardPage() {
 
                 <div className="field-group">
                   <label className="field-label" htmlFor="edit-card-due-date">
-                    Prazo
+                    Prazo (opcional)
                   </label>
                   <input
                     className="field-input"
@@ -952,7 +951,6 @@ export function ProjectBoardPage() {
                         dueDate: event.target.value,
                       }))
                     }
-                    required
                     type="date"
                     value={editCardForm.dueDate}
                   />

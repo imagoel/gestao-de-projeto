@@ -73,7 +73,8 @@ export class CardsService {
         description: updateCardDto.description,
         assigneeId: updateCardDto.assigneeId,
         priority: updateCardDto.priority,
-        dueDate: normalizeDateInput(updateCardDto.dueDate),
+        dueDate:
+          updateCardDto.dueDate === undefined ? undefined : normalizeDateInput(updateCardDto.dueDate),
       },
       include: this.cardInclude,
     });

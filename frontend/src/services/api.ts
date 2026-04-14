@@ -242,7 +242,7 @@ export const api = {
       description?: string;
       assigneeId: string;
       priority: CardPriority;
-      dueDate: string;
+      dueDate?: string | null;
     },
   ) {
     return request<CardDetail>(`/columns/${columnId}/cards`, {
@@ -260,7 +260,7 @@ export const api = {
       description?: string;
       assigneeId: string;
       priority: CardPriority;
-      dueDate: string;
+      dueDate?: string | null;
     },
   ) {
     return request<CardDetail>(`/cards/${cardId}`, {
