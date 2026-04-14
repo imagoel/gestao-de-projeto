@@ -19,7 +19,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"           # remova ou restrinja em produção
+      - "${POSTGRES_HOST_PORT:-35432}:5432"           # remova ou restrinja em produção
     networks:
       - gestao_network
     healthcheck:
@@ -50,7 +50,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
     ports:
-      - "3000:3000"
+      - "${API_HOST_PORT:-13000}:3000"
     networks:
       - gestao_network
 
@@ -68,7 +68,7 @@ services:
     depends_on:
       - api
     ports:
-      - "80:80"
+      - "${WEB_HOST_PORT:-18080}:80"
     networks:
       - gestao_network
 
