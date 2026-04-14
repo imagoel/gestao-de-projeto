@@ -44,6 +44,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-gestao_user}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-gestao_projetos}
       JWT_SECRET: ${JWT_SECRET:-troque-isso-em-producao}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Administrador Inicial}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@empresa.com}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123456}
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
     ports:
@@ -58,6 +61,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
     container_name: gestao_projetos_web
     restart: unless-stopped
     depends_on:
