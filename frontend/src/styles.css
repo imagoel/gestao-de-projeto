@@ -196,7 +196,8 @@ textarea {
 }
 
 .primary-button,
-.secondary-button {
+.secondary-button,
+.button-danger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
