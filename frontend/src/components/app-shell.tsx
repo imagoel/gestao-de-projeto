@@ -2,6 +2,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { NavLink, type NavLinkRenderProps } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
+import gtiLogo from '../assets/gti-logo.jpeg';
 
 type AppShellProps = PropsWithChildren<{
   title: string;
@@ -36,8 +37,15 @@ export function AppShell({
     <div className="app-shell">
       <aside className="app-sidebar">
         <div className="app-brand">
-          <p className="app-brand-title">Gestao</p>
-          <p className="app-brand-copy">Sistema interno de projetos</p>
+          <img
+            alt="GTI - Gestao de Tecnologia da Informacao"
+            className="app-brand-logo"
+            src={gtiLogo}
+          />
+          <div className="app-brand-copy-block">
+            <p className="app-brand-title">Gestao de projetos</p>
+            <p className="app-brand-copy">Sistema interno da GTI para acompanhamento do setor.</p>
+          </div>
         </div>
 
         <nav className="app-nav" aria-label="Navegacao principal">

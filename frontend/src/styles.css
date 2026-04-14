@@ -37,6 +37,25 @@ textarea {
   min-height: 100vh;
 }
 
+.system-corner-brand {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.system-corner-brand-image {
+  width: min(19vw, 144px);
+  max-width: 144px;
+  height: auto;
+  opacity: 0.92;
+  filter: drop-shadow(0 12px 22px rgba(18, 71, 124, 0.14));
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
@@ -51,8 +70,25 @@ textarea {
 }
 
 .app-brand {
-  padding: 24px 20px;
+  display: grid;
+  gap: 14px;
+  padding: 20px 18px;
   border-bottom: 1px solid #d4d1c7;
+}
+
+.app-brand-logo {
+  width: 100%;
+  max-width: 184px;
+  height: auto;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #ded8cc;
+  box-shadow: 0 16px 28px rgba(23, 23, 23, 0.06);
+}
+
+.app-brand-copy-block {
+  display: grid;
+  gap: 6px;
 }
 
 .app-brand-title {
@@ -132,6 +168,7 @@ textarea {
 
 .app-main {
   padding: 28px;
+  padding-bottom: 88px;
 }
 
 .page-header {
@@ -529,10 +566,14 @@ textarea {
 }
 
 .login-logo {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: #185fa5;
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  border-radius: 18px;
+  border: 1px solid #ded8cc;
+  background: #ffffff;
+  box-shadow: 0 18px 32px rgba(23, 23, 23, 0.08);
   margin-bottom: 16px;
 }
 
@@ -883,5 +924,21 @@ textarea {
 
   .checklist-inline-input {
     min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .system-corner-brand {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .system-corner-brand-image {
+    width: min(34vw, 108px);
+  }
+
+  .app-main {
+    padding: 20px;
+    padding-bottom: 84px;
   }
 }

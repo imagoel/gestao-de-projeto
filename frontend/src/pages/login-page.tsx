@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
+import gtiLogo from '../assets/gti-logo.jpeg';
 import { ApiError } from '../services/api';
 
 export function LoginPage() {
@@ -40,10 +41,14 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <div className="login-logo" />
+        <img
+          alt="GTI - Gestao de Tecnologia da Informacao"
+          className="login-logo"
+          src={gtiLogo}
+        />
         <h1 className="login-title">Gestao de projetos</h1>
         <p className="login-copy">
-          Entre com seu e-mail e senha para acessar os projetos e o quadro Kanban do MVP.
+          Entre com seu e-mail e senha para acessar os projetos e o quadro Kanban da GTI.
         </p>
 
         <div className="field-group">
