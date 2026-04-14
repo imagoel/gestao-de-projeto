@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type DragEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
 import {
@@ -490,14 +490,19 @@ export function ProjectBoardPage() {
       subtitle="Projetos / quadro"
       copy="Board unico do MVP com colunas fixas, cards com responsavel e prioridade obrigatorios, prazo opcional, colaboracao no detalhe do card e drag-and-drop no polimento."
       action={
-        <button
-          className="primary-button"
-          disabled={!canCreateCard}
-          onClick={() => openCreateCardModal()}
-          type="button"
-        >
-          Novo card
-        </button>
+        <div className="page-header-actions">
+          <Link className="secondary-button" to={`/projetos/${projectId}`}>
+            Ver detalhes
+          </Link>
+          <button
+            className="primary-button"
+            disabled={!canCreateCard}
+            onClick={() => openCreateCardModal()}
+            type="button"
+          >
+            Novo card
+          </button>
+        </div>
       }
     >
       {isReadOnlyProject ? (

@@ -144,27 +144,42 @@ export function ProjectsPage() {
         projectsQuery.data && projectsQuery.data.length > 0 ? (
           <section className="project-grid">
             {projectsQuery.data.map((project) => (
-              <Link className="project-card" key={project.id} to={`/projetos/${project.id}`}>
-                <div className="stack">
-                  <div className="badge-row">
-                    <span className={`badge ${getProjectStatusTone(project.status)}`}>
-                      {formatProjectStatus(project.status)}
-                    </span>
-                    <span className="badge badge-gray">
-                      {project.members.length} participante{project.members.length === 1 ? '' : 's'}
-                    </span>
+              <article className="project-card" key={project.id}>
+                <button
+                  className="project-card-main"
+                  onClick={() => navigate(`/projetos/${project.id}/quadro`)}
+                  type="button"
+                >
+                  <div className="stack">
+                    <div className="badge-row">
+                      <span className={`badge ${getProjectStatusTone(project.status)}`}>
+                        {formatProjectStatus(project.status)}
+                      </span>
+                      <span className="badge badge-gray">
+                        {project.members.length} participante{project.members.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <h2 className="project-card-title">{project.name}</h2>
+                    <p className="project-card-copy">
+                      {project.description || 'Projeto sem descricao cadastrada.'}
+                    </p>
                   </div>
-                  <h2 className="project-card-title">{project.name}</h2>
-                  <p className="project-card-copy">
-                    {project.description || 'Projeto sem descricao cadastrada.'}
-                  </p>
-                </div>
 
-                <div className="project-meta">
-                  <span>{project.owner.name}</span>
-                  <span>{formatShortDate(project.deadline)}</span>
+                  <div className="project-meta">
+                    <span>{project.owner.name}</span>
+                    <span>{formatShortDate(project.deadline)}</span>
+                  </div>
+                </button>
+
+                <div className="project-card-actions">
+                  <Link className="text-button" to={`/projetos/${project.id}`}>
+                    Ver detalhes
+                  </Link>
+                  <Link className="secondary-button project-card-board-link" to={`/projetos/${project.id}/quadro`}>
+                    Abrir quadro
+                  </Link>
                 </div>
-              </Link>
+              </article>
             ))}
           </section>
         ) : (

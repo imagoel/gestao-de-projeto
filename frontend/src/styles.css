@@ -171,6 +171,13 @@ textarea {
   margin-bottom: 24px;
 }
 
+.page-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .page-title {
   margin: 0;
   font-size: 1.6rem;
@@ -272,9 +279,31 @@ textarea {
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
+.project-card-main {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
 .project-card:hover {
   transform: translateY(-2px);
   border-color: #a4afbc;
+}
+
+.project-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.project-card-board-link {
+  padding: 8px 12px;
 }
 
 .project-card-title {
@@ -294,6 +323,12 @@ textarea {
   gap: 12px;
   font-size: 0.88rem;
   color: #6f6b63;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .badge-row {

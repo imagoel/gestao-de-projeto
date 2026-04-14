@@ -324,6 +324,36 @@ describe('Gestao GTI API (e2e)', () => {
     expect(commentsResponse.body[0].author.email).toBe(member.email);
   });
 
+  it('recreates fixed board structure for legacy projects without board', async () => {
+    const adminToken = await getAdminToken();
+
+    const projectResponse = await request(app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Projeto legado',
+        ownerId: adminId,
+      })
+      .expect(201);
+
+    await prisma.board.delete({
+      where: {
+        projectId: projectResponse.body.id,
+      },
+    });
+
+    const boardResponse = await request(app.getHttpServer())
+      .get(`/api/projects/${projectResponse.body.id}/board`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(boardResponse.body.columns.map((column: { title: string }) => column.title)).toEqual([
+      'A fazer',
+      'Em andamento',
+      'Concluido',
+    ]);
+  });
+
   it('allows viewers to read the project but blocks write operations', async () => {
     const adminToken = await getAdminToken();
     const member = await createMember('editor@empresa.com');

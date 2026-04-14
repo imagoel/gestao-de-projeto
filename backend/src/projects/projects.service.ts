@@ -8,6 +8,7 @@ import { Prisma, ProjectRole, ProjectStatus } from '@prisma/client';
 
 import { ProjectAccessService } from '../common/services/project-access.service';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
+import { DEFAULT_BOARD_COLUMNS } from '../common/constants/default-board-columns';
 import { normalizeDateInput } from '../common/utils/normalize-date-input.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { publicUserSelect } from '../users/user-select';
@@ -43,8 +44,6 @@ const projectDetailsInclude = {
 
 @Injectable()
 export class ProjectsService {
-  private readonly defaultColumnTitles = ['A fazer', 'Em andamento', 'Concluido'];
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
@@ -62,7 +61,13 @@ export class ProjectsService {
   }
 
   async findOne(user: AuthenticatedUser, id: string) {
-    return this.projectAccessService.ensureProjectAccess(user, id);
+    await this.projectAccessService.ensureProjectAccess(user, id);
+    await this.ensureProjectBoard(id);
+
+    return this.prisma.project.findUniqueOrThrow({
+      where: { id },
+      include: projectDetailsInclude,
+    });
   }
 
   async create(createProjectDto: CreateProjectDto) {
@@ -108,7 +113,7 @@ export class ProjectsService {
       });
 
       await tx.column.createMany({
-        data: this.defaultColumnTitles.map((title, position) => ({
+        data: DEFAULT_BOARD_COLUMNS.map((title, position) => ({
           boardId: board.id,
           title,
           position,
@@ -242,5 +247,36 @@ export class ProjectsService {
     });
 
     return { success: true };
+  }
+
+  private async ensureProjectBoard(projectId: string) {
+    const existingBoard = await this.prisma.board.findUnique({
+      where: { projectId },
+      select: { id: true },
+    });
+
+    if (existingBoard) {
+      return existingBoard.id;
+    }
+
+    const board = await this.prisma.$transaction(async (tx) => {
+      const createdBoard = await tx.board.create({
+        data: {
+          projectId,
+        },
+      });
+
+      await tx.column.createMany({
+        data: DEFAULT_BOARD_COLUMNS.map((title, position) => ({
+          boardId: createdBoard.id,
+          title,
+          position,
+        })),
+      });
+
+      return createdBoard;
+    });
+
+    return board.id;
   }
 }

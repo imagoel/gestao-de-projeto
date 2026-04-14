@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
+import { DEFAULT_BOARD_COLUMNS } from '../common/constants/default-board-columns';
 import { ProjectAccessService } from '../common/services/project-access.service';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,6 +15,7 @@ export class BoardsService {
 
   async findProjectBoard(user: AuthenticatedUser, projectId: string) {
     await this.projectAccessService.ensureProjectAccess(user, projectId);
+    await this.ensureProjectBoard(projectId);
 
     const board = await this.prisma.board.findUnique({
       where: {
@@ -48,5 +50,36 @@ export class BoardsService {
     }
 
     return board;
+  }
+
+  private async ensureProjectBoard(projectId: string) {
+    const existingBoard = await this.prisma.board.findUnique({
+      where: { projectId },
+      select: { id: true },
+    });
+
+    if (existingBoard) {
+      return existingBoard.id;
+    }
+
+    const board = await this.prisma.$transaction(async (tx) => {
+      const createdBoard = await tx.board.create({
+        data: {
+          projectId,
+        },
+      });
+
+      await tx.column.createMany({
+        data: DEFAULT_BOARD_COLUMNS.map((title, position) => ({
+          boardId: createdBoard.id,
+          title,
+          position,
+        })),
+      });
+
+      return createdBoard;
+    });
+
+    return board.id;
   }
 }

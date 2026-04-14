@@ -22,16 +22,21 @@ export function ProjectDetailPage() {
 
   const project = projectQuery.data;
   const action = project ? (
-    <Link className="primary-button" to={`/projetos/${projectId}/quadro`}>
-      Abrir quadro
-    </Link>
+    <div className="page-header-actions">
+      <Link className="secondary-button" to="/projetos">
+        Voltar aos projetos
+      </Link>
+      <Link className="primary-button" to={`/projetos/${projectId}/quadro`}>
+        Abrir quadro
+      </Link>
+    </div>
   ) : null;
 
   return (
     <AppShell
       title={project?.name ?? 'Detalhe do projeto'}
       subtitle="Projetos / detalhe"
-      copy="Resumo do projeto, membros e informacoes essenciais antes de entrar no board unico do MVP."
+      copy="Painel rapido do projeto, com contexto essencial e acesso secundario ao quadro."
       action={action}
     >
       {projectQuery.isLoading ? (
@@ -90,6 +95,17 @@ export function ProjectDetailPage() {
 
           <aside className="panel info-list">
             <div className="info-row">
+              <span className="info-label">Acoes rapidas</span>
+              <div className="panel-actions">
+                <Link className="primary-button" to={`/projetos/${projectId}/quadro`}>
+                  Abrir quadro
+                </Link>
+                <Link className="secondary-button" to="/projetos">
+                  Voltar
+                </Link>
+              </div>
+            </div>
+            <div className="info-row">
               <span className="info-label">Status</span>
               <span className="info-value">
                 <span className={`badge ${getProjectStatusTone(project.status)}`}>
@@ -100,7 +116,7 @@ export function ProjectDetailPage() {
             <div className="info-row">
               <span className="info-label">Board</span>
               <span className="info-value">
-                {project.board ? `${project.board.columns.length} colunas fixas no MVP` : 'Board nao inicializado'}
+                {project.board ? `${project.board.columns.length} colunas fixas no MVP` : 'Board em preparacao'}
               </span>
             </div>
             <div className="info-row">
