@@ -13,7 +13,7 @@ export class UpdateProjectDto {
 
   @IsOptional()
   @IsDateString()
-  deadline?: string;
+  deadline?: string | null;
 
   @IsOptional()
   @IsEnum(ProjectStatus)

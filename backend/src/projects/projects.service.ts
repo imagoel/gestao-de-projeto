@@ -85,7 +85,7 @@ export class ProjectsService {
         data: {
           name: createProjectDto.name,
           description: createProjectDto.description,
-          deadline: createProjectDto.deadline,
+          deadline: createProjectDto.deadline ?? null,
           ownerId: createProjectDto.ownerId,
           status: ProjectStatus.ACTIVE,
         },
@@ -136,7 +136,8 @@ export class ProjectsService {
         data: {
           name: updateProjectDto.name,
           description: updateProjectDto.description,
-          deadline: updateProjectDto.deadline,
+          deadline:
+            updateProjectDto.deadline === undefined ? undefined : updateProjectDto.deadline,
           status: updateProjectDto.status,
           ownerId: updateProjectDto.ownerId,
         },

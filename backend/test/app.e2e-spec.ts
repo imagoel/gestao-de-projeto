@@ -114,11 +114,11 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto MVP',
         description: 'Projeto de teste',
-        deadline: '2026-07-01T00:00:00.000Z',
         ownerId: adminId,
       })
       .expect(201);
 
+    expect(response.body.deadline).toBeNull();
     expect(response.body.board.columns).toHaveLength(3);
     expect(response.body.board.columns.map((column: { title: string }) => column.title)).toEqual([
       'A fazer',

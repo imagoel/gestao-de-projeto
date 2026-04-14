@@ -247,7 +247,7 @@ export function ProjectsPage() {
           <div className="form-row">
             <div className="field-group">
               <label className="field-label" htmlFor="project-deadline">
-                Prazo
+                Prazo (opcional)
               </label>
               <input
                 className="field-input"
@@ -261,6 +261,7 @@ export function ProjectsPage() {
                 type="date"
                 value={projectForm.deadline}
               />
+              <p className="field-helper">Voce pode deixar este campo em branco no projeto.</p>
             </div>
 
             <div className="field-group">

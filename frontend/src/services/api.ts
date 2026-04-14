@@ -142,7 +142,7 @@ export const api = {
     payload: {
       name: string;
       description?: string;
-      deadline?: string;
+      deadline?: string | null;
       ownerId: string;
       memberIds?: string[];
     },
