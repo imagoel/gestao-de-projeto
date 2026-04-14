@@ -1,0 +1,78 @@
+# ============================================================
+# docker-compose.yml — Sistema de Gestão de Projetos
+# Deploy via Portainer
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # Banco de dados PostgreSQL
+  # ----------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: gestao_projetos_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gestao_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-gestao_projetos}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"           # remova ou restrinja em produção
+    networks:
+      - gestao_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gestao_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------
+  # Back-end NestJS
+  # ----------------------------------------------------------
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gestao_projetos_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-gestao_user}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-gestao_projetos}
+      JWT_SECRET: ${JWT_SECRET:-troque-isso-em-producao}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    networks:
+      - gestao_network
+
+  # ----------------------------------------------------------
+  # Front-end React (servido via Nginx após build)
+  # ----------------------------------------------------------
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gestao_projetos_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+    networks:
+      - gestao_network
+
+# ----------------------------------------------------------
+# Volumes e redes
+# ----------------------------------------------------------
+volumes:
+  postgres_data:
+
+networks:
+  gestao_network:
+    driver: bridge
