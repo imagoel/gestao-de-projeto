@@ -177,6 +177,16 @@ export class ProjectsService {
     });
   }
 
+  async remove(id: string) {
+    const project = await this.projectAccessService.ensureProjectExists(id);
+
+    await this.prisma.project.delete({
+      where: { id: project.id },
+    });
+
+    return { success: true };
+  }
+
   async addMember(projectId: string, addProjectMemberDto: AddProjectMemberDto) {
     const project = await this.projectAccessService.ensureProjectExists(projectId);
 

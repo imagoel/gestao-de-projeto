@@ -210,6 +210,7 @@ textarea {
 
 .primary-button:disabled,
 .secondary-button:disabled,
+.button-danger:disabled,
 .icon-button:disabled,
 .text-button:disabled {
   cursor: not-allowed;
@@ -229,6 +230,11 @@ textarea {
 .button-danger {
   background: #fbe8e6;
   color: #8c2f25;
+}
+
+.button-danger:hover {
+  background: #f6d9d4;
+  transform: translateY(-1px);
 }
 
 .text-button,

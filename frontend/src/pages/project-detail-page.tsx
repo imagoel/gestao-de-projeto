@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
 import {
@@ -9,23 +9,60 @@ import {
 } from '../app/formatters';
 import { AppShell } from '../components/app-shell';
 import { StatusState } from '../components/status-state';
-import { api } from '../services/api';
+import { ApiError, api } from '../services/api';
 
 export function ProjectDetailPage() {
-  const { token } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { token, user } = useAuth();
   const { projectId = 'projeto' } = useParams();
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => api.getProject(token!, projectId),
     enabled: Boolean(token && projectId),
   });
+  const deleteProjectMutation = useMutation({
+    mutationFn: () => api.deleteProject(token!, projectId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.removeQueries({ queryKey: ['project', projectId] });
+      navigate('/projetos');
+    },
+  });
 
   const project = projectQuery.data;
+
+  async function handleDeleteProject() {
+    if (!project) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Deseja apagar o projeto "${project.name}"? Esta acao remove o board e os cards vinculados a ele.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteProjectMutation.mutateAsync();
+  }
+
   const action = project ? (
     <div className="page-header-actions">
       <Link className="secondary-button" to="/projetos">
         Voltar aos projetos
       </Link>
+      {user?.role === 'ADMIN' ? (
+        <button
+          className="button-danger"
+          disabled={deleteProjectMutation.isPending}
+          onClick={() => void handleDeleteProject()}
+          type="button"
+        >
+          {deleteProjectMutation.isPending ? 'Apagando...' : 'Apagar projeto'}
+        </button>
+      ) : null}
       <Link className="primary-button" to={`/projetos/${projectId}/quadro`}>
         Abrir quadro
       </Link>
@@ -60,6 +97,18 @@ export function ProjectDetailPage() {
             <button className="secondary-button" onClick={() => void projectQuery.refetch()} type="button">
               Recarregar
             </button>
+          }
+        />
+      ) : null}
+
+      {deleteProjectMutation.isError ? (
+        <StatusState
+          tone="error"
+          title="Nao foi possivel apagar o projeto"
+          copy={
+            deleteProjectMutation.error instanceof ApiError
+              ? deleteProjectMutation.error.message
+              : 'Tente novamente em instantes.'
           }
         />
       ) : null}
@@ -103,6 +152,16 @@ export function ProjectDetailPage() {
                 <Link className="secondary-button" to="/projetos">
                   Voltar
                 </Link>
+                {user?.role === 'ADMIN' ? (
+                  <button
+                    className="button-danger"
+                    disabled={deleteProjectMutation.isPending}
+                    onClick={() => void handleDeleteProject()}
+                    type="button"
+                  >
+                    {deleteProjectMutation.isPending ? 'Apagando...' : 'Apagar projeto'}
+                  </button>
+                ) : null}
               </div>
             </div>
             <div className="info-row">

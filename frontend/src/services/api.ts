@@ -154,6 +154,13 @@ export const api = {
     });
   },
 
+  deleteProject(token: string, projectId: string) {
+    return request<{ success: true }>(`/projects/${projectId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
   addProjectMember(
     token: string,
     projectId: string,

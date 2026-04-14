@@ -167,6 +167,41 @@ describe('Gestao GTI API (e2e)', () => {
       .expect(403);
   });
 
+  it('lets admin delete projects and blocks member from deleting them', async () => {
+    const adminToken = await getAdminToken();
+    const member = await createMember('delete-member@empresa.com');
+    const memberToken = await getTokenForUser(member.email, 'membro1234');
+
+    const projectResponse = await request(app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Projeto descartavel',
+        ownerId: adminId,
+        memberIds: [member.id],
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .delete(`/api/projects/${projectResponse.body.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .delete(`/api/projects/${projectResponse.body.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200, { success: true });
+
+    const projectsResponse = await request(app.getHttpServer())
+      .get('/api/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(
+      projectsResponse.body.some((project: { id: string }) => project.id === projectResponse.body.id),
+    ).toBe(false);
+  });
+
   it('validates card required fields and supports move + archive', async () => {
     const adminToken = await getAdminToken();
     const member = await createMember('card-owner@empresa.com');

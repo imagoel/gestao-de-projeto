@@ -48,6 +48,12 @@ export class ProjectsController {
   }
 
   @Roles(UserRole.ADMIN)
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.projectsService.remove(id);
+  }
+
+  @Roles(UserRole.ADMIN)
   @Post(':id/members')
   addMember(@Param('id') id: string, @Body() addProjectMemberDto: AddProjectMemberDto) {
     return this.projectsService.addMember(id, addProjectMemberDto);
