@@ -2,7 +2,7 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import { NavLink, type NavLinkRenderProps } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
-import gtiLogo from '../assets/gti-logo.jpeg';
+import gtiLogo from '../assets/gti-logo.png';
 
 type AppShellProps = PropsWithChildren<{
   title: string;

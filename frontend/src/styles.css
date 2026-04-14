@@ -552,17 +552,18 @@ textarea {
 .login-stack {
   width: min(100%, 360px);
   display: grid;
-  gap: 18px;
+  gap: 22px;
   justify-items: center;
 }
 
 .login-card {
   width: 100%;
-  padding: 28px 32px 32px;
-  border: 1px solid #d4d1c7;
-  border-radius: 20px;
-  background: #ffffff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  display: grid;
+  gap: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 .login-logo {
@@ -574,14 +575,16 @@ textarea {
 }
 
 .login-title {
-  margin: 0 0 20px;
+  margin: 0;
   font-size: 1.7rem;
+  text-align: center;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .login-card .primary-button {
   min-width: 112px;
-  margin-top: 4px;
+  justify-self: center;
+  margin-top: 2px;
   background: #9e243d;
   color: #ffffff;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
@@ -597,6 +600,40 @@ textarea {
   display: grid;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.login-card .field-group {
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+.login-card .field-label {
+  text-align: center;
+  font-weight: 600;
+  color: #666159;
+}
+
+.login-card .field-input {
+  border: none;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  text-align: center;
+}
+
+.login-card .field-input::placeholder {
+  color: #7a786f;
+}
+
+.login-card .field-input:focus {
+  box-shadow:
+    0 0 5px 0 rgba(51, 154, 128, 0.3),
+    0 10px 26px rgba(0, 0, 0, 0.14);
+  transform: translateY(-1px);
+}
+
+.login-card .form-error {
+  text-align: center;
 }
 
 .field-label {
@@ -955,6 +992,6 @@ textarea {
   }
 
   .login-card {
-    padding: 24px;
+    gap: 16px;
   }
 }

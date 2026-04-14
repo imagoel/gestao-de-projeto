@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
-import gtiLogo from '../assets/gti-logo.jpeg';
+import gtiLogo from '../assets/gti-logo.png';
 import { ApiError } from '../services/api';
 
 export function LoginPage() {
