@@ -42,10 +42,7 @@ export function AppShell({
             className="app-brand-logo"
             src={gtiLogo}
           />
-          <div className="app-brand-copy-block">
-            <p className="app-brand-title">Gestao de projetos</p>
-            <p className="app-brand-copy">Sistema interno da GTI para acompanhamento do setor.</p>
-          </div>
+          <p className="app-brand-title">Gestao de projetos</p>
         </div>
 
         <nav className="app-nav" aria-label="Navegacao principal">

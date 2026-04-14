@@ -40,53 +40,53 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      <form className="login-card" onSubmit={handleSubmit}>
+      <div className="login-stack">
         <img
           alt="GTI - Gestao de Tecnologia da Informacao"
           className="login-logo"
           src={gtiLogo}
         />
-        <h1 className="login-title">Gestao de projetos</h1>
-        <p className="login-copy">
-          Entre com seu e-mail e senha para acessar os projetos e o quadro Kanban da GTI.
-        </p>
 
-        <div className="field-group">
-          <label className="field-label" htmlFor="email">
-            E-mail
-          </label>
-          <input
-            autoComplete="email"
-            className="field-input"
-            id="email"
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="seu@empresa.com"
-            type="email"
-            value={email}
-          />
-        </div>
+        <form className="login-card" onSubmit={handleSubmit}>
+          <h1 className="login-title">Gestao de projetos</h1>
 
-        <div className="field-group">
-          <label className="field-label" htmlFor="password">
-            Senha
-          </label>
-          <input
-            autoComplete="current-password"
-            className="field-input"
-            id="password"
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="********"
-            type="password"
-            value={password}
-          />
-        </div>
+          <div className="field-group">
+            <label className="field-label" htmlFor="email">
+              E-mail
+            </label>
+            <input
+              autoComplete="email"
+              className="field-input"
+              id="email"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="seu@empresa.com"
+              type="email"
+              value={email}
+            />
+          </div>
 
-        {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
+          <div className="field-group">
+            <label className="field-label" htmlFor="password">
+              Senha
+            </label>
+            <input
+              autoComplete="current-password"
+              className="field-input"
+              id="password"
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="********"
+              type="password"
+              value={password}
+            />
+          </div>
 
-        <button className="primary-button" disabled={isSubmitting} type="submit">
-          {isSubmitting ? 'Entrando...' : 'Entrar'}
-        </button>
-      </form>
+          {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
+
+          <button className="primary-button" disabled={isSubmitting} type="submit">
+            {isSubmitting ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
