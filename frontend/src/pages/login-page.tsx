@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
 import gtiLogo from '../assets/gti-logo.png';
+import minhaLogo from '../assets/minha-logo.png';
 import { ApiError } from '../services/api';
 
 export function LoginPage() {
@@ -87,6 +88,10 @@ export function LoginPage() {
           </button>
         </form>
       </div>
+
+      <footer className="login-footer">
+        <img alt="Immanuel Vicente" className="login-footer-logo" src={minhaLogo} />
+      </footer>
     </div>
   );
 }

@@ -114,12 +114,6 @@ export function AppShell({
               <small>{user?.role === 'ADMIN' ? 'Admin' : 'Membro'}</small>
             </div>
           </div>
-          <img
-            alt=""
-            aria-hidden="true"
-            className="app-sidebar-brand-mark"
-            src={minhaLogo}
-          />
           <div className="app-foot-actions">
             <button
               className="secondary-button app-logout-button"
@@ -132,6 +126,11 @@ export function AppShell({
               Sair
             </button>
           </div>
+          <img
+            alt="Immanuel Vicente"
+            className="app-sidebar-brand-mark"
+            src={minhaLogo}
+          />
         </div>
       </aside>
 

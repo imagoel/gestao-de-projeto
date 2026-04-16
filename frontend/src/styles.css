@@ -661,11 +661,24 @@ textarea {
 }
 
 .login-page {
-  display: grid;
-  justify-items: center;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-height: 100vh;
-  padding: clamp(44px, 9vh, 88px) 24px 24px;
+  padding: 24px;
+}
+
+.login-footer {
+  margin-top: auto;
+  padding: 24px 0 12px;
+  text-align: center;
+}
+
+.login-footer-logo {
+  width: min(28vw, 140px);
+  height: auto;
+  opacity: 0.9;
 }
 
 .login-stack {
