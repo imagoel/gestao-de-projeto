@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -13,6 +13,7 @@ import { AppShell } from '../components/app-shell';
 import { Modal } from '../components/modal';
 import { StatusState } from '../components/status-state';
 import { ApiError, api } from '../services/api';
+import type { Project, ProjectFolder } from '../types/api';
 
 type ProjectFormState = {
   name: string;
@@ -30,6 +31,8 @@ const initialProjectForm: ProjectFormState = {
   memberIds: [],
 };
 
+const UNASSIGNED_KEY = '__unassigned__';
+
 export function ProjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -37,10 +40,19 @@ export function ProjectsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(initialProjectForm);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [folderError, setFolderError] = useState<string | null>(null);
 
   const projectsQuery = useQuery({
     queryKey: ['projects'],
     queryFn: () => api.getProjects(token!),
+    enabled: Boolean(token),
+  });
+
+  const foldersQuery = useQuery({
+    queryKey: ['folders'],
+    queryFn: () => api.getFolders(token!),
     enabled: Boolean(token),
   });
 
@@ -51,6 +63,21 @@ export function ProjectsPage() {
   });
 
   const availableUsers = usersQuery.data ?? [];
+  const folders = foldersQuery.data ?? [];
+  const isAdmin = user?.role === 'ADMIN';
+
+  const groupedProjects = useMemo(() => {
+    const projects = projectsQuery.data ?? [];
+    const groups = new Map<string, Project[]>();
+    groups.set(UNASSIGNED_KEY, []);
+    folders.forEach((folder) => groups.set(folder.id, []));
+    projects.forEach((project) => {
+      const key = project.folderId ?? UNASSIGNED_KEY;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(project);
+    });
+    return groups;
+  }, [projectsQuery.data, folders]);
 
   const createProjectMutation = useMutation({
     mutationFn: () =>
@@ -64,10 +91,7 @@ export function ProjectsPage() {
     onSuccess: async (project) => {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       setIsCreateModalOpen(false);
-      setProjectForm({
-        ...initialProjectForm,
-        ownerId: user?.id ?? '',
-      });
+      setProjectForm({ ...initialProjectForm, ownerId: user?.id ?? '' });
       setFormError(null);
       navigate(`/projetos/${project.id}`);
     },
@@ -78,11 +102,41 @@ export function ProjectsPage() {
     },
   });
 
+  const createFolderMutation = useMutation({
+    mutationFn: (name: string) => api.createFolder(token!, { name }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['folders'] });
+      setIsCreateFolderOpen(false);
+      setNewFolderName('');
+      setFolderError(null);
+    },
+    onError: (error) => {
+      setFolderError(
+        error instanceof ApiError ? error.message : 'Nao foi possivel criar a pasta.',
+      );
+    },
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: (folderId: string) => api.deleteFolder(token!, folderId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['folders'] }),
+        queryClient.invalidateQueries({ queryKey: ['projects'] }),
+      ]);
+    },
+  });
+
+  const moveProjectMutation = useMutation({
+    mutationFn: (payload: { projectId: string; folderId: string | null }) =>
+      api.updateProject(token!, payload.projectId, { folderId: payload.folderId }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+
   function openCreateModal() {
-    setProjectForm({
-      ...initialProjectForm,
-      ownerId: user?.id ?? '',
-    });
+    setProjectForm({ ...initialProjectForm, ownerId: user?.id ?? '' });
     setFormError(null);
     setIsCreateModalOpen(true);
   }
@@ -91,7 +145,7 @@ export function ProjectsPage() {
     setProjectForm((currentForm) => ({
       ...currentForm,
       memberIds: currentForm.memberIds.includes(userId)
-        ? currentForm.memberIds.filter((memberId) => memberId !== userId)
+        ? currentForm.memberIds.filter((id) => id !== userId)
         : [...currentForm.memberIds, userId],
     }));
   }
@@ -102,12 +156,135 @@ export function ProjectsPage() {
     await createProjectMutation.mutateAsync();
   }
 
-  const action =
-    user?.role === 'ADMIN' ? (
-      <button className="primary-button" onClick={openCreateModal} type="button">
-        Novo projeto
-      </button>
-    ) : null;
+  function renderProjectCard(project: Project) {
+    return (
+      <article className="project-card" key={project.id}>
+        <button
+          className="project-card-main"
+          onClick={() => navigate(`/projetos/${project.id}/quadro`)}
+          type="button"
+        >
+          <div className="stack">
+            <div className="badge-row">
+              <span className={`badge ${getProjectStatusTone(project.status)}`}>
+                {formatProjectStatus(project.status)}
+              </span>
+              <span className="badge badge-gray">
+                {project.members.length} participante{project.members.length === 1 ? '' : 's'}
+              </span>
+            </div>
+            <h2 className="project-card-title">{project.name}</h2>
+            <p className="project-card-copy">
+              {project.description || 'Projeto sem descricao cadastrada.'}
+            </p>
+          </div>
+          <div className="project-meta">
+            <span>{project.owner.name}</span>
+            <span>{formatShortDate(project.deadline)}</span>
+          </div>
+        </button>
+        <div className="project-card-actions">
+          <Link className="text-button" to={`/projetos/${project.id}`}>
+            Ver detalhes
+          </Link>
+          <Link className="secondary-button project-card-board-link" to={`/projetos/${project.id}/quadro`}>
+            Abrir quadro
+          </Link>
+        </div>
+        {isAdmin ? (
+          <div className="project-card-actions" style={{ marginTop: 4 }}>
+            <label className="field-helper" style={{ marginRight: 8 }}>Pasta:</label>
+            <select
+              className="field-input"
+              disabled={moveProjectMutation.isPending}
+              onChange={(e) =>
+                void moveProjectMutation.mutateAsync({
+                  projectId: project.id,
+                  folderId: e.target.value || null,
+                })
+              }
+              style={{ padding: '6px 10px', fontSize: '0.85rem', maxWidth: 180 }}
+              value={project.folderId ?? ''}
+            >
+              <option value="">Sem pasta</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+      </article>
+    );
+  }
+
+  const action = (
+    <div className="page-header-actions">
+      {isAdmin ? (
+        <button
+          className="secondary-button"
+          onClick={() => {
+            setNewFolderName('');
+            setFolderError(null);
+            setIsCreateFolderOpen(true);
+          }}
+          type="button"
+        >
+          Nova pasta
+        </button>
+      ) : null}
+      {isAdmin ? (
+        <button className="primary-button" onClick={openCreateModal} type="button">
+          Novo projeto
+        </button>
+      ) : null}
+    </div>
+  );
+
+  function renderFolderSection(folder: ProjectFolder | null) {
+    const key = folder?.id ?? UNASSIGNED_KEY;
+    const projects = groupedProjects.get(key) ?? [];
+    if (projects.length === 0 && !folder) return null;
+    return (
+      <section key={key} style={{ marginBottom: 24 }}>
+        <header
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 12,
+            gap: 12,
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
+            {folder ? `📁 ${folder.name}` : 'Sem pasta'}
+            <span style={{ marginLeft: 8, color: '#6f6b63', fontSize: '0.85rem', fontWeight: 400 }}>
+              ({projects.length})
+            </span>
+          </h2>
+          {folder && isAdmin ? (
+            <button
+              className="text-button"
+              disabled={deleteFolderMutation.isPending}
+              onClick={() => {
+                if (window.confirm(`Apagar a pasta "${folder.name}"? Os projetos voltam para "Sem pasta".`)) {
+                  void deleteFolderMutation.mutateAsync(folder.id);
+                }
+              }}
+              style={{ color: '#8c2f25' }}
+              type="button"
+            >
+              Apagar pasta
+            </button>
+          ) : null}
+        </header>
+        {projects.length > 0 ? (
+          <div className="project-grid">{projects.map(renderProjectCard)}</div>
+        ) : (
+          <p className="field-helper">Pasta vazia. Mova projetos para ca usando o seletor.</p>
+        )}
+      </section>
+    );
+  }
 
   return (
     <AppShell
@@ -127,11 +304,7 @@ export function ProjectsPage() {
         <StatusState
           tone="error"
           title="Nao foi possivel carregar os projetos"
-          copy={
-            projectsQuery.error instanceof Error
-              ? projectsQuery.error.message
-              : 'Tente novamente em instantes.'
-          }
+          copy={projectsQuery.error instanceof Error ? projectsQuery.error.message : 'Tente novamente em instantes.'}
           action={
             <button className="secondary-button" onClick={() => void projectsQuery.refetch()} type="button">
               Tentar de novo
@@ -142,51 +315,15 @@ export function ProjectsPage() {
 
       {!projectsQuery.isLoading && !projectsQuery.isError ? (
         projectsQuery.data && projectsQuery.data.length > 0 ? (
-          <section className="project-grid">
-            {projectsQuery.data.map((project) => (
-              <article className="project-card" key={project.id}>
-                <button
-                  className="project-card-main"
-                  onClick={() => navigate(`/projetos/${project.id}/quadro`)}
-                  type="button"
-                >
-                  <div className="stack">
-                    <div className="badge-row">
-                      <span className={`badge ${getProjectStatusTone(project.status)}`}>
-                        {formatProjectStatus(project.status)}
-                      </span>
-                      <span className="badge badge-gray">
-                        {project.members.length} participante{project.members.length === 1 ? '' : 's'}
-                      </span>
-                    </div>
-                    <h2 className="project-card-title">{project.name}</h2>
-                    <p className="project-card-copy">
-                      {project.description || 'Projeto sem descricao cadastrada.'}
-                    </p>
-                  </div>
-
-                  <div className="project-meta">
-                    <span>{project.owner.name}</span>
-                    <span>{formatShortDate(project.deadline)}</span>
-                  </div>
-                </button>
-
-                <div className="project-card-actions">
-                  <Link className="text-button" to={`/projetos/${project.id}`}>
-                    Ver detalhes
-                  </Link>
-                  <Link className="secondary-button project-card-board-link" to={`/projetos/${project.id}/quadro`}>
-                    Abrir quadro
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </section>
+          <>
+            {folders.map((folder) => renderFolderSection(folder))}
+            {renderFolderSection(null)}
+          </>
         ) : (
           <StatusState
             title="Nenhum projeto disponivel"
             copy={
-              user?.role === 'ADMIN'
+              isAdmin
                 ? 'Crie o primeiro projeto para iniciar o quadro Kanban do MVP.'
                 : 'Voce ainda nao participa de nenhum projeto.'
             }
@@ -194,6 +331,53 @@ export function ProjectsPage() {
           />
         )
       ) : null}
+
+      <Modal
+        title="Nova pasta"
+        description="Pastas ajudam a agrupar projetos por cliente, area ou tema."
+        open={isCreateFolderOpen}
+        onClose={() => setIsCreateFolderOpen(false)}
+        footer={
+          <>
+            <button
+              className="secondary-button"
+              onClick={() => setIsCreateFolderOpen(false)}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="primary-button"
+              disabled={createFolderMutation.isPending || !newFolderName.trim()}
+              onClick={() => void createFolderMutation.mutateAsync(newFolderName.trim())}
+              type="button"
+            >
+              {createFolderMutation.isPending ? 'Criando...' : 'Criar pasta'}
+            </button>
+          </>
+        }
+      >
+        <div className="form-grid">
+          <div className="field-group">
+            <label className="field-label" htmlFor="new-folder-name">Nome da pasta</label>
+            <input
+              autoFocus
+              className="field-input"
+              id="new-folder-name"
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newFolderName.trim()) {
+                  e.preventDefault();
+                  void createFolderMutation.mutateAsync(newFolderName.trim());
+                }
+              }}
+              type="text"
+              value={newFolderName}
+            />
+          </div>
+          {folderError ? <p className="form-error">{folderError}</p> : null}
+        </div>
+      </Modal>
 
       <Modal
         description="Cada projeto do MVP nasce com um board unico e as colunas fixas A fazer, Em andamento e Concluido."
@@ -222,18 +406,13 @@ export function ProjectsPage() {
       >
         <form className="form-grid" id="create-project-form" onSubmit={handleCreateProject}>
           <div className="field-group">
-            <label className="field-label" htmlFor="project-name">
-              Nome
-            </label>
+            <label className="field-label" htmlFor="project-name">Nome</label>
             <input
               className="field-input"
               id="project-name"
               minLength={2}
               onChange={(event) =>
-                setProjectForm((currentForm) => ({
-                  ...currentForm,
-                  name: event.target.value,
-                }))
+                setProjectForm((currentForm) => ({ ...currentForm, name: event.target.value }))
               }
               required
               type="text"
@@ -242,17 +421,12 @@ export function ProjectsPage() {
           </div>
 
           <div className="field-group">
-            <label className="field-label" htmlFor="project-description">
-              Descricao
-            </label>
+            <label className="field-label" htmlFor="project-description">Descricao</label>
             <textarea
               className="field-input field-textarea"
               id="project-description"
               onChange={(event) =>
-                setProjectForm((currentForm) => ({
-                  ...currentForm,
-                  description: event.target.value,
-                }))
+                setProjectForm((currentForm) => ({ ...currentForm, description: event.target.value }))
               }
               rows={4}
               value={projectForm.description}
@@ -261,17 +435,12 @@ export function ProjectsPage() {
 
           <div className="form-row">
             <div className="field-group">
-              <label className="field-label" htmlFor="project-deadline">
-                Prazo (opcional)
-              </label>
+              <label className="field-label" htmlFor="project-deadline">Prazo (opcional)</label>
               <input
                 className="field-input"
                 id="project-deadline"
                 onChange={(event) =>
-                  setProjectForm((currentForm) => ({
-                    ...currentForm,
-                    deadline: event.target.value,
-                  }))
+                  setProjectForm((currentForm) => ({ ...currentForm, deadline: event.target.value }))
                 }
                 type="date"
                 value={projectForm.deadline}
@@ -280,17 +449,12 @@ export function ProjectsPage() {
             </div>
 
             <div className="field-group">
-              <label className="field-label" htmlFor="project-owner">
-                Owner
-              </label>
+              <label className="field-label" htmlFor="project-owner">Owner</label>
               <select
                 className="field-input"
                 id="project-owner"
                 onChange={(event) =>
-                  setProjectForm((currentForm) => ({
-                    ...currentForm,
-                    ownerId: event.target.value,
-                  }))
+                  setProjectForm((currentForm) => ({ ...currentForm, ownerId: event.target.value }))
                 }
                 required
                 value={projectForm.ownerId}
@@ -322,9 +486,7 @@ export function ProjectsPage() {
                 </label>
               ))}
             </div>
-            <p className="field-helper">
-              O owner sempre sera incluido como gerente do projeto.
-            </p>
+            <p className="field-helper">O owner sempre sera incluido como gerente do projeto.</p>
           </div>
 
           {formError ? <p className="form-error">{formError}</p> : null}

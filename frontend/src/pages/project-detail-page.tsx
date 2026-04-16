@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
@@ -8,25 +9,69 @@ import {
   getProjectStatusTone,
 } from '../app/formatters';
 import { AppShell } from '../components/app-shell';
+import { Modal } from '../components/modal';
 import { StatusState } from '../components/status-state';
 import { ApiError, api } from '../services/api';
+import type { ProjectRole } from '../types/api';
 
 export function ProjectDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { token, user } = useAuth();
   const { projectId = 'projeto' } = useParams();
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [addMemberUserId, setAddMemberUserId] = useState('');
+  const [addMemberRole, setAddMemberRole] = useState<ProjectRole>('MEMBER');
+  const [memberError, setMemberError] = useState<string | null>(null);
+
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => api.getProject(token!, projectId),
     enabled: Boolean(token && projectId),
   });
+
+  const usersQuery = useQuery({
+    queryKey: ['users'],
+    queryFn: () => api.getUsers(token!),
+    enabled: Boolean(token && user?.role === 'ADMIN' && isAddMemberOpen),
+  });
+
   const deleteProjectMutation = useMutation({
     mutationFn: () => api.deleteProject(token!, projectId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.removeQueries({ queryKey: ['project', projectId] });
       navigate('/projetos');
+    },
+  });
+
+  const addMemberMutation = useMutation({
+    mutationFn: () =>
+      api.addProjectMember(token!, projectId, {
+        userId: addMemberUserId,
+        role: addMemberRole,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      setIsAddMemberOpen(false);
+      setAddMemberUserId('');
+      setAddMemberRole('MEMBER');
+      setMemberError(null);
+    },
+    onError: (error) => {
+      setMemberError(
+        error instanceof ApiError
+          ? error.message
+          : 'Nao foi possivel adicionar o membro.',
+      );
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: string) =>
+      api.removeProjectMember(token!, projectId, userId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     },
   });
 
@@ -113,6 +158,74 @@ export function ProjectDetailPage() {
         />
       ) : null}
 
+      <Modal
+        title="Adicionar membro"
+        description="Selecione o usuario e o papel no projeto."
+        open={isAddMemberOpen}
+        onClose={() => setIsAddMemberOpen(false)}
+        footer={
+          <>
+            <button
+              className="secondary-button"
+              onClick={() => setIsAddMemberOpen(false)}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="primary-button"
+              disabled={addMemberMutation.isPending || !addMemberUserId}
+              onClick={() => void addMemberMutation.mutateAsync()}
+              type="button"
+            >
+              {addMemberMutation.isPending ? 'Adicionando...' : 'Adicionar'}
+            </button>
+          </>
+        }
+      >
+        <div className="form-grid">
+          <div className="field-group">
+            <label className="field-label" htmlFor="add-member-user">
+              Usuario
+            </label>
+            <select
+              className="field-input"
+              id="add-member-user"
+              onChange={(e) => setAddMemberUserId(e.target.value)}
+              value={addMemberUserId}
+            >
+              <option value="">Selecione</option>
+              {(usersQuery.data ?? [])
+                .filter(
+                  (u) =>
+                    !project?.members.some((m) => m.user.id === u.id),
+                )
+                .map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email})
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div className="field-group">
+            <label className="field-label" htmlFor="add-member-role">
+              Papel no projeto
+            </label>
+            <select
+              className="field-input"
+              id="add-member-role"
+              onChange={(e) => setAddMemberRole(e.target.value as ProjectRole)}
+              value={addMemberRole}
+            >
+              <option value="MANAGER">Manager</option>
+              <option value="MEMBER">Member</option>
+              <option value="VIEWER">Viewer</option>
+            </select>
+          </div>
+          {memberError ? <p className="form-error">{memberError}</p> : null}
+        </div>
+      </Modal>
+
       {project ? (
         <div className="detail-grid">
           <section className="panel info-list">
@@ -136,9 +249,47 @@ export function ProjectDetailPage() {
                 {project.members.map((member) => (
                   <span className="member-pill" key={member.id}>
                     {member.user.name}
+                    <small style={{ marginLeft: 4, color: '#6f6b63' }}>
+                      ({member.role})
+                    </small>
+                    {user?.role === 'ADMIN' &&
+                    member.user.id !== project.ownerId ? (
+                      <button
+                        className="text-button"
+                        disabled={removeMemberMutation.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Remover ${member.user.name} do projeto?`,
+                            )
+                          ) {
+                            void removeMemberMutation.mutateAsync(
+                              member.user.id,
+                            );
+                          }
+                        }}
+                        style={{ marginLeft: 4, color: '#8c2f25', fontSize: '0.8rem' }}
+                        type="button"
+                      >
+                        remover
+                      </button>
+                    ) : null}
                   </span>
                 ))}
               </div>
+              {user?.role === 'ADMIN' ? (
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    setMemberError(null);
+                    setIsAddMemberOpen(true);
+                  }}
+                  style={{ marginTop: 8, justifySelf: 'start' }}
+                  type="button"
+                >
+                  Adicionar membro
+                </button>
+              ) : null}
             </div>
           </section>
 

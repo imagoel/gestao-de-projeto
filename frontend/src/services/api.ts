@@ -7,6 +7,7 @@ import type {
   ChecklistItem,
   Project,
   ProjectBoard,
+  ProjectFolder,
   ProjectRole,
 } from '../types/api';
 
@@ -154,6 +155,45 @@ export const api = {
     });
   },
 
+  updateProject(
+    token: string,
+    projectId: string,
+    payload: { folderId?: string | null; name?: string },
+  ) {
+    return request<Project>(`/projects/${projectId}`, {
+      method: 'PATCH',
+      token,
+      body: payload,
+    });
+  },
+
+  getFolders(token: string) {
+    return request<ProjectFolder[]>('/folders', { token });
+  },
+
+  createFolder(token: string, payload: { name: string }) {
+    return request<ProjectFolder>('/folders', {
+      method: 'POST',
+      token,
+      body: payload,
+    });
+  },
+
+  updateFolder(token: string, folderId: string, payload: { name: string }) {
+    return request<ProjectFolder>(`/folders/${folderId}`, {
+      method: 'PATCH',
+      token,
+      body: payload,
+    });
+  },
+
+  deleteFolder(token: string, folderId: string) {
+    return request<{ success: true }>(`/folders/${folderId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
   deleteProject(token: string, projectId: string) {
     return request<{ success: true }>(`/projects/${projectId}`, {
       method: 'DELETE',
@@ -175,6 +215,34 @@ export const api = {
 
   removeProjectMember(token: string, projectId: string, userId: string) {
     return request<{ success: true }>(`/projects/${projectId}/members/${userId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
+  createColumn(token: string, boardId: string, payload: { title: string }) {
+    return request<{ id: string; title: string; position: number }>(
+      `/boards/${boardId}/columns`,
+      { method: 'POST', token, body: payload },
+    );
+  },
+
+  updateColumn(token: string, columnId: string, payload: { title: string }) {
+    return request<{ id: string; title: string; position: number }>(
+      `/columns/${columnId}`,
+      { method: 'PATCH', token, body: payload },
+    );
+  },
+
+  reorderColumn(token: string, columnId: string, payload: { targetPosition: number }) {
+    return request<{ id: string; title: string; position: number }>(
+      `/columns/${columnId}/reorder`,
+      { method: 'PATCH', token, body: payload },
+    );
+  },
+
+  deleteColumn(token: string, columnId: string) {
+    return request<{ success: true }>(`/columns/${columnId}`, {
       method: 'DELETE',
       token,
     });

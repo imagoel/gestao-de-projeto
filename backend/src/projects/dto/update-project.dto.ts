@@ -1,5 +1,5 @@
 import { ProjectStatus } from '@prisma/client';
-import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MinLength, ValidateIf } from 'class-validator';
 
 export class UpdateProjectDto {
   @IsOptional()
@@ -22,4 +22,9 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsUUID()
   ownerId?: string;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  folderId?: string | null;
 }

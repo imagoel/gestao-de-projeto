@@ -136,6 +136,14 @@ export class ProjectsService {
       await this.usersService.ensureUsersExist([updateProjectDto.ownerId]);
     }
 
+    if (updateProjectDto.folderId) {
+      const folder = await this.prisma.projectFolder.findUnique({
+        where: { id: updateProjectDto.folderId },
+        select: { id: true },
+      });
+      if (!folder) throw new NotFoundException('Pasta nao encontrada.');
+    }
+
     await this.prisma.$transaction(async (tx) => {
       await tx.project.update({
         where: { id: project.id },
@@ -148,6 +156,10 @@ export class ProjectsService {
               : normalizeDateInput(updateProjectDto.deadline),
           status: updateProjectDto.status,
           ownerId: updateProjectDto.ownerId,
+          folderId:
+            updateProjectDto.folderId === undefined
+              ? undefined
+              : updateProjectDto.folderId,
         },
       });
 

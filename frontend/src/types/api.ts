@@ -36,9 +36,16 @@ export interface Project {
   status: ProjectStatus;
   deadline?: string | null;
   ownerId: string;
+  folderId?: string | null;
   owner: ApiUser;
   members: ProjectMember[];
   board?: ProjectBoardSummary | null;
+}
+
+export interface ProjectFolder {
+  id: string;
+  name: string;
+  createdAt: string;
 }
 
 export interface BoardCard {

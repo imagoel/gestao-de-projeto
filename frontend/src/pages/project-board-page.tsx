@@ -1,22 +1,28 @@
-import { Fragment, useEffect, useState, type DragEvent, type FormEvent } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import {
+  Fragment,
+  useEffect,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useParams } from "react-router-dom";
 
-import { useAuth } from '../app/auth-provider';
+import { useAuth } from "../app/auth-provider";
 import {
   formatPriority,
   formatShortDate,
   getDueDateTone,
   getPriorityTone,
   toDateInputValue,
-} from '../app/formatters';
-import { AppShell } from '../components/app-shell';
-import { Modal } from '../components/modal';
-import { StatusState } from '../components/status-state';
-import { CardChecklistSection } from '../features/cards/card-checklist-section';
-import { CardCommentsSection } from '../features/cards/card-comments-section';
-import { ApiError, api } from '../services/api';
-import type { BoardColumn, CardPriority, ChecklistItem } from '../types/api';
+} from "../app/formatters";
+import { AppShell } from "../components/app-shell";
+import { Modal } from "../components/modal";
+import { StatusState } from "../components/status-state";
+import { CardChecklistSection } from "../features/cards/card-checklist-section";
+import { CardCommentsSection } from "../features/cards/card-comments-section";
+import { ApiError, api } from "../services/api";
+import type { BoardColumn, CardPriority, ChecklistItem } from "../types/api";
 
 type CreateCardFormState = {
   assigneeId: string;
@@ -38,25 +44,25 @@ type EditCardFormState = {
 };
 
 const initialCreateCardForm: CreateCardFormState = {
-  assigneeId: '',
-  columnId: '',
-  description: '',
-  dueDate: '',
-  priority: 'MEDIUM',
-  title: '',
+  assigneeId: "",
+  columnId: "",
+  description: "",
+  dueDate: "",
+  priority: "MEDIUM",
+  title: "",
 };
 
 const initialEditCardForm: EditCardFormState = {
-  assigneeId: '',
-  description: '',
-  dueDate: '',
-  priority: 'MEDIUM',
-  targetColumnId: '',
+  assigneeId: "",
+  description: "",
+  dueDate: "",
+  priority: "MEDIUM",
+  targetColumnId: "",
   targetPosition: 0,
-  title: '',
+  title: "",
 };
 
-const priorityOptions: CardPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+const priorityOptions: CardPriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
 type DragCardState = {
   cardId: string;
@@ -88,60 +94,72 @@ function getPositionOptions(
 export function ProjectBoardPage() {
   const queryClient = useQueryClient();
   const { token, user } = useAuth();
-  const { projectId = '' } = useParams();
+  const { projectId = "" } = useParams();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [createCardForm, setCreateCardForm] = useState<CreateCardFormState>(initialCreateCardForm);
-  const [editCardForm, setEditCardForm] = useState<EditCardFormState>(initialEditCardForm);
+  const [createCardForm, setCreateCardForm] = useState<CreateCardFormState>(
+    initialCreateCardForm,
+  );
+  const [editCardForm, setEditCardForm] =
+    useState<EditCardFormState>(initialEditCardForm);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [checklistError, setChecklistError] = useState<string | null>(null);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [boardActionError, setBoardActionError] = useState<string | null>(null);
   const [dragCard, setDragCard] = useState<DragCardState | null>(null);
-  const [dropTarget, setDropTarget] = useState<{ columnId: string; position: number } | null>(
-    null,
-  );
+  const [dropTarget, setDropTarget] = useState<{
+    columnId: string;
+    position: number;
+  } | null>(null);
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
+  const [editingColumnTitle, setEditingColumnTitle] = useState('');
+  const [newColumnTitle, setNewColumnTitle] = useState('');
+  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
+  const [columnError, setColumnError] = useState<string | null>(null);
 
   const projectQuery = useQuery({
-    queryKey: ['project', projectId],
+    queryKey: ["project", projectId],
     queryFn: () => api.getProject(token!, projectId),
     enabled: Boolean(token && projectId),
   });
 
   const boardQuery = useQuery({
-    queryKey: ['board', projectId],
+    queryKey: ["board", projectId],
     queryFn: () => api.getProjectBoard(token!, projectId),
     enabled: Boolean(token && projectId),
   });
 
   const cardQuery = useQuery({
-    queryKey: ['card', selectedCardId],
+    queryKey: ["card", selectedCardId],
     queryFn: () => api.getCard(token!, selectedCardId!),
     enabled: Boolean(token && selectedCardId),
   });
 
   const checklistQuery = useQuery({
-    queryKey: ['checklist', selectedCardId],
+    queryKey: ["checklist", selectedCardId],
     queryFn: () => api.getChecklistItems(token!, selectedCardId!),
     enabled: Boolean(token && selectedCardId),
   });
 
   const commentsQuery = useQuery({
-    queryKey: ['comments', selectedCardId],
+    queryKey: ["comments", selectedCardId],
     queryFn: () => api.getCardComments(token!, selectedCardId!),
     enabled: Boolean(token && selectedCardId),
   });
 
-  const memberOptions = projectQuery.data?.members.map((member) => member.user) ?? [];
+  const memberOptions =
+    projectQuery.data?.members.map((member) => member.user) ?? [];
   const columns = boardQuery.data?.columns ?? [];
-  const currentProjectMember = projectQuery.data?.members.find((member) => member.user.id === user?.id);
+  const currentProjectMember = projectQuery.data?.members.find(
+    (member) => member.user.id === user?.id,
+  );
   const canEditProject = Boolean(
     user &&
-      (user.role === 'ADMIN' ||
-        projectQuery.data?.ownerId === user.id ||
-        currentProjectMember?.role === 'MANAGER' ||
-        currentProjectMember?.role === 'MEMBER'),
+    (user.role === "ADMIN" ||
+      projectQuery.data?.ownerId === user.id ||
+      currentProjectMember?.role === "MANAGER" ||
+      currentProjectMember?.role === "MEMBER"),
   );
   const isReadOnlyProject = Boolean(projectQuery.data && !canEditProject);
 
@@ -150,17 +168,35 @@ export function ProjectBoardPage() {
       return;
     }
 
-    setEditCardForm({
-      assigneeId: cardQuery.data.assignee?.id ?? memberOptions[0]?.id ?? '',
-      description: cardQuery.data.description ?? '',
-      dueDate: toDateInputValue(cardQuery.data.dueDate),
-      priority: cardQuery.data.priority,
-      targetColumnId: cardQuery.data.columnId,
-      targetPosition: cardQuery.data.position,
-      title: cardQuery.data.title,
-    });
+    const assigneeId =
+      cardQuery.data.assignee?.id ?? memberOptions[0]?.id ?? "";
+
+    // Only set form if we have a valid assignee or member options
+    if (!assigneeId && memberOptions.length === 0) {
+      // Card has no assignee and no members available - keep it empty but valid
+      setEditCardForm({
+        assigneeId: "",
+        description: cardQuery.data.description ?? "",
+        dueDate: toDateInputValue(cardQuery.data.dueDate),
+        priority: cardQuery.data.priority,
+        targetColumnId: cardQuery.data.columnId,
+        targetPosition: cardQuery.data.position,
+        title: cardQuery.data.title,
+      });
+    } else {
+      setEditCardForm({
+        assigneeId,
+        description: cardQuery.data.description ?? "",
+        dueDate: toDateInputValue(cardQuery.data.dueDate),
+        priority: cardQuery.data.priority,
+        targetColumnId: cardQuery.data.columnId,
+        targetPosition: cardQuery.data.position,
+        title: cardQuery.data.title,
+      });
+    }
     setEditError(null);
-  }, [cardQuery.data, memberOptions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardQuery.data?.id]);
 
   const createCardMutation = useMutation({
     mutationFn: () =>
@@ -172,14 +208,16 @@ export function ProjectBoardPage() {
         title: createCardForm.title,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['board', projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
       setIsCreateModalOpen(false);
       setCreateCardForm(initialCreateCardForm);
       setCreateError(null);
     },
     onError: (error) => {
       setCreateError(
-        error instanceof ApiError ? error.message : 'Nao foi possivel criar o card.',
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel criar o card.",
       );
     },
   });
@@ -187,8 +225,14 @@ export function ProjectBoardPage() {
   const saveCardMutation = useMutation({
     mutationFn: async () => {
       if (!selectedCardId) {
-        throw new Error('Card nao selecionado.');
+        throw new Error("Card nao selecionado.");
       }
+
+      // Debug logging
+      console.log("[DEBUG] Saving card:", {
+        cardId: selectedCardId,
+        formData: editCardForm,
+      });
 
       const savedCard = await api.updateCard(token!, selectedCardId, {
         assigneeId: editCardForm.assigneeId,
@@ -197,6 +241,8 @@ export function ProjectBoardPage() {
         priority: editCardForm.priority,
         title: editCardForm.title,
       });
+
+      console.log("[DEBUG] Card updated:", savedCard);
 
       const shouldMove =
         editCardForm.targetColumnId !== savedCard.column.id ||
@@ -213,15 +259,18 @@ export function ProjectBoardPage() {
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['board', projectId] }),
-        queryClient.invalidateQueries({ queryKey: ['card', selectedCardId] }),
+        queryClient.invalidateQueries({ queryKey: ["board", projectId] }),
+        queryClient.invalidateQueries({ queryKey: ["card", selectedCardId] }),
       ]);
       setSelectedCardId(null);
       setEditError(null);
     },
     onError: (error) => {
+      console.error("[DEBUG] Save card error:", error);
       setEditError(
-        error instanceof ApiError ? error.message : 'Nao foi possivel salvar o card.',
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel salvar o card.",
       );
     },
   });
@@ -229,22 +278,24 @@ export function ProjectBoardPage() {
   const archiveCardMutation = useMutation({
     mutationFn: async () => {
       if (!selectedCardId) {
-        throw new Error('Card nao selecionado.');
+        throw new Error("Card nao selecionado.");
       }
 
       return api.archiveCard(token!, selectedCardId);
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['board', projectId] }),
-        queryClient.invalidateQueries({ queryKey: ['card', selectedCardId] }),
+        queryClient.invalidateQueries({ queryKey: ["board", projectId] }),
+        queryClient.invalidateQueries({ queryKey: ["card", selectedCardId] }),
       ]);
       setSelectedCardId(null);
       setEditError(null);
     },
     onError: (error) => {
       setEditError(
-        error instanceof ApiError ? error.message : 'Nao foi possivel arquivar o card.',
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel arquivar o card.",
       );
     },
   });
@@ -261,8 +312,8 @@ export function ProjectBoardPage() {
       }),
     onSuccess: async (_, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['board', projectId] }),
-        queryClient.invalidateQueries({ queryKey: ['card', variables.cardId] }),
+        queryClient.invalidateQueries({ queryKey: ["board", projectId] }),
+        queryClient.invalidateQueries({ queryKey: ["card", variables.cardId] }),
       ]);
       setBoardActionError(null);
       setDragCard(null);
@@ -270,45 +321,130 @@ export function ProjectBoardPage() {
     },
     onError: (error) => {
       setBoardActionError(
-        error instanceof ApiError ? error.message : 'Nao foi possivel mover o card no quadro.',
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel mover o card no quadro.",
       );
       setDragCard(null);
       setDropTarget(null);
     },
   });
 
+  const renameColumnMutation = useMutation({
+    mutationFn: async (payload: { columnId: string; title: string }) =>
+      api.updateColumn(token!, payload.columnId, { title: payload.title }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
+      setEditingColumnId(null);
+      setColumnError(null);
+    },
+    onError: (error) => {
+      setColumnError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel renomear a coluna.",
+      );
+    },
+  });
+
+  const addColumnMutation = useMutation({
+    mutationFn: async (title: string) => {
+      const board = boardQuery.data;
+      if (!board) throw new Error("Board nao encontrado.");
+      return api.createColumn(token!, board.id, { title });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
+      setNewColumnTitle("");
+      setIsAddColumnOpen(false);
+      setColumnError(null);
+    },
+    onError: (error) => {
+      setColumnError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel adicionar a coluna.",
+      );
+    },
+  });
+
+  const deleteColumnMutation = useMutation({
+    mutationFn: async (columnId: string) => api.deleteColumn(token!, columnId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
+      setColumnError(null);
+    },
+    onError: (error) => {
+      setColumnError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel remover a coluna.",
+      );
+    },
+  });
+
+  const reorderColumnMutation = useMutation({
+    mutationFn: async (payload: { columnId: string; targetPosition: number }) =>
+      api.reorderColumn(token!, payload.columnId, {
+        targetPosition: payload.targetPosition,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
+      setColumnError(null);
+    },
+    onError: (error) => {
+      setColumnError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel reordenar a coluna.",
+      );
+    },
+  });
+
   const createChecklistItemMutation = useMutation({
     mutationFn: async (title: string) => {
       if (!selectedCardId) {
-        throw new Error('Card nao selecionado.');
+        throw new Error("Card nao selecionado.");
       }
 
       return api.createChecklistItem(token!, selectedCardId, { title });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['checklist', selectedCardId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["checklist", selectedCardId],
+      });
       setChecklistError(null);
     },
     onError: (error) => {
       setChecklistError(
-        error instanceof ApiError ? error.message : 'Nao foi possivel criar o item do checklist.',
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel criar o item do checklist.",
       );
     },
   });
 
   const updateChecklistItemMutation = useMutation({
-    mutationFn: async (payload: { itemId: string; title?: string; done?: boolean }) =>
+    mutationFn: async (payload: {
+      itemId: string;
+      title?: string;
+      done?: boolean;
+    }) =>
       api.updateChecklistItem(token!, payload.itemId, {
         title: payload.title,
         done: payload.done,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['checklist', selectedCardId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["checklist", selectedCardId],
+      });
       setChecklistError(null);
     },
     onError: (error) => {
       setChecklistError(
-        error instanceof ApiError ? error.message : 'Nao foi possivel atualizar o checklist.',
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel atualizar o checklist.",
       );
     },
   });
@@ -319,12 +455,16 @@ export function ProjectBoardPage() {
         targetPosition: payload.targetPosition,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['checklist', selectedCardId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["checklist", selectedCardId],
+      });
       setChecklistError(null);
     },
     onError: (error) => {
       setChecklistError(
-        error instanceof ApiError ? error.message : 'Nao foi possivel reordenar o checklist.',
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel reordenar o checklist.",
       );
     },
   });
@@ -332,18 +472,22 @@ export function ProjectBoardPage() {
   const createCommentMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!selectedCardId) {
-        throw new Error('Card nao selecionado.');
+        throw new Error("Card nao selecionado.");
       }
 
       return api.createCardComment(token!, selectedCardId, { content });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['comments', selectedCardId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["comments", selectedCardId],
+      });
       setCommentError(null);
     },
     onError: (error) => {
       setCommentError(
-        error instanceof ApiError ? error.message : 'Nao foi possivel publicar o comentario.',
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel publicar o comentario.",
       );
     },
   });
@@ -351,9 +495,9 @@ export function ProjectBoardPage() {
   function openCreateCardModal(columnId?: string) {
     setCreateCardForm({
       ...initialCreateCardForm,
-      assigneeId: memberOptions[0]?.id ?? '',
-      columnId: columnId ?? columns[0]?.id ?? '',
-      priority: 'MEDIUM',
+      assigneeId: memberOptions[0]?.id ?? "",
+      columnId: columnId ?? columns[0]?.id ?? "",
+      priority: "MEDIUM",
     });
     setBoardActionError(null);
     setCreateError(null);
@@ -384,13 +528,22 @@ export function ProjectBoardPage() {
     await saveCardMutation.mutateAsync();
   }
 
-  const positionOptions = getPositionOptions(columns, editCardForm.targetColumnId, selectedCardId ?? undefined);
-  const canCreateCard = canEditProject && columns.length > 0 && memberOptions.length > 0;
-  const currentCardColumnName = columns.find((column) => column.id === cardQuery.data?.columnId)?.title;
+  const positionOptions = getPositionOptions(
+    columns,
+    editCardForm.targetColumnId,
+    selectedCardId ?? undefined,
+  );
+  const canCreateCard =
+    canEditProject && columns.length > 0 && memberOptions.length > 0;
+  const currentCardColumnName = columns.find(
+    (column) => column.id === cardQuery.data?.columnId,
+  )?.title;
   const checklistItems = checklistQuery.data ?? [];
   const checklistErrorMessage =
     checklistError ??
-    (checklistQuery.error instanceof Error ? checklistQuery.error.message : null);
+    (checklistQuery.error instanceof Error
+      ? checklistQuery.error.message
+      : null);
   const commentErrorMessage =
     commentError ??
     (commentsQuery.error instanceof Error ? commentsQuery.error.message : null);
@@ -409,14 +562,21 @@ export function ProjectBoardPage() {
     });
   }
 
-  async function handleChecklistMove(item: ChecklistItem, targetPosition: number) {
+  async function handleChecklistMove(
+    item: ChecklistItem,
+    targetPosition: number,
+  ) {
     await reorderChecklistItemMutation.mutateAsync({
       itemId: item.id,
       targetPosition,
     });
   }
 
-  function handleDragStart(cardId: string, sourceColumnId: string, sourcePosition: number) {
+  function handleDragStart(
+    cardId: string,
+    sourceColumnId: string,
+    sourcePosition: number,
+  ) {
     if (!canEditProject) {
       return;
     }
@@ -465,7 +625,10 @@ export function ProjectBoardPage() {
       return;
     }
 
-    if (dragCard.sourceColumnId === columnId && dragCard.sourcePosition === position) {
+    if (
+      dragCard.sourceColumnId === columnId &&
+      dragCard.sourcePosition === position
+    ) {
       setDragCard(null);
       setDropTarget(null);
       return;
@@ -480,13 +643,13 @@ export function ProjectBoardPage() {
 
   function getDropZoneClassName(columnId: string, position: number) {
     return dropTarget?.columnId === columnId && dropTarget.position === position
-      ? 'board-drop-zone board-drop-zone-active'
-      : 'board-drop-zone';
+      ? "board-drop-zone board-drop-zone-active"
+      : "board-drop-zone";
   }
 
   return (
     <AppShell
-      title={projectQuery.data?.name ?? 'Quadro Kanban'}
+      title={projectQuery.data?.name ?? "Quadro Kanban"}
       subtitle="Projetos / quadro"
       copy="Board unico do MVP com colunas fixas, cards com responsavel e prioridade obrigatorios, prazo opcional, colaboracao no detalhe do card e drag-and-drop no polimento."
       action={
@@ -494,6 +657,19 @@ export function ProjectBoardPage() {
           <Link className="secondary-button" to={`/projetos/${projectId}`}>
             Ver detalhes
           </Link>
+          {canEditProject ? (
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setNewColumnTitle("");
+                setColumnError(null);
+                setIsAddColumnOpen(true);
+              }}
+              type="button"
+            >
+              Nova coluna
+            </button>
+          ) : null}
           <button
             className="primary-button"
             disabled={!canCreateCard}
@@ -507,11 +683,18 @@ export function ProjectBoardPage() {
     >
       {isReadOnlyProject ? (
         <p className="field-helper board-inline-note">
-          Seu perfil neste projeto e somente leitura. Voce pode acompanhar o board e abrir os cards, mas sem alterar conteudo.
+          Seu perfil neste projeto e somente leitura. Voce pode acompanhar o
+          board e abrir os cards, mas sem alterar conteudo.
         </p>
       ) : null}
 
-      {boardActionError ? <p className="form-error board-inline-error">{boardActionError}</p> : null}
+      {boardActionError ? (
+        <p className="form-error board-inline-error">{boardActionError}</p>
+      ) : null}
+
+      {columnError ? (
+        <p className="form-error board-inline-error">{columnError}</p>
+      ) : null}
 
       {projectQuery.isLoading || boardQuery.isLoading ? (
         <StatusState
@@ -530,7 +713,7 @@ export function ProjectBoardPage() {
               ? projectQuery.error.message
               : boardQuery.error instanceof Error
                 ? boardQuery.error.message
-                : 'Tente novamente em instantes.'
+                : "Tente novamente em instantes."
           }
           action={
             <button
@@ -547,15 +730,98 @@ export function ProjectBoardPage() {
         />
       ) : null}
 
-      {!projectQuery.isLoading && !boardQuery.isLoading && !projectQuery.isError && !boardQuery.isError ? (
+      {!projectQuery.isLoading &&
+      !boardQuery.isLoading &&
+      !projectQuery.isError &&
+      !boardQuery.isError ? (
         columns.length > 0 ? (
           <section className="board-grid">
             {columns.map((column) => (
               <article className="board-column" key={column.id}>
                 <div className="board-column-header">
-                  <span>{column.title}</span>
+                  {editingColumnId === column.id ? (
+                    <form
+                      className="inline-form"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (editingColumnTitle.trim()) {
+                          void renameColumnMutation.mutateAsync({
+                            columnId: column.id,
+                            title: editingColumnTitle.trim(),
+                          });
+                        }
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      <input
+                        autoFocus
+                        className="field-input"
+                        onChange={(e) => setEditingColumnTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setEditingColumnId(null);
+                        }}
+                        style={{ padding: "6px 10px", fontSize: "0.9rem" }}
+                        type="text"
+                        value={editingColumnTitle}
+                      />
+                      <button className="text-button" type="submit">
+                        OK
+                      </button>
+                    </form>
+                  ) : (
+                    <span
+                      onDoubleClick={() => {
+                        if (canEditProject) {
+                          setEditingColumnId(column.id);
+                          setEditingColumnTitle(column.title);
+                        }
+                      }}
+                      style={{ cursor: canEditProject ? "pointer" : "default" }}
+                      title={canEditProject ? "Duplo clique para renomear" : ""}
+                    >
+                      {column.title}
+                    </span>
+                  )}
                   <div className="board-column-header-actions">
-                    <span className="board-column-count">{column.cards.length}</span>
+                    {canEditProject && columns.length > 1 ? (
+                      <>
+                        {column.position > 0 ? (
+                          <button
+                            className="text-button"
+                            disabled={reorderColumnMutation.isPending}
+                            onClick={() =>
+                              void reorderColumnMutation.mutateAsync({
+                                columnId: column.id,
+                                targetPosition: column.position - 1,
+                              })
+                            }
+                            title="Mover para esquerda"
+                            type="button"
+                          >
+                            &larr;
+                          </button>
+                        ) : null}
+                        {column.position < columns.length - 1 ? (
+                          <button
+                            className="text-button"
+                            disabled={reorderColumnMutation.isPending}
+                            onClick={() =>
+                              void reorderColumnMutation.mutateAsync({
+                                columnId: column.id,
+                                targetPosition: column.position + 1,
+                              })
+                            }
+                            title="Mover para direita"
+                            type="button"
+                          >
+                            &rarr;
+                          </button>
+                        ) : null}
+                      </>
+                    ) : null}
+                    <span className="board-column-count">
+                      {column.cards.length}
+                    </span>
                     <button
                       className="text-button"
                       disabled={!canEditProject}
@@ -564,6 +830,26 @@ export function ProjectBoardPage() {
                     >
                       + Card
                     </button>
+                    {canEditProject ? (
+                      <button
+                        className="text-button"
+                        disabled={deleteColumnMutation.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Remover a coluna "${column.title}"? Cards ativos impedem a remocao.`,
+                            )
+                          ) {
+                            void deleteColumnMutation.mutateAsync(column.id);
+                          }
+                        }}
+                        style={{ color: "#8c2f25" }}
+                        title="Remover coluna"
+                        type="button"
+                      >
+                        x
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -571,7 +857,9 @@ export function ProjectBoardPage() {
                   <>
                     <div
                       className={getDropZoneClassName(column.id, 0)}
-                      onDragOver={(event) => handleDropTargetDragOver(event, column.id, 0)}
+                      onDragOver={(event) =>
+                        handleDropTargetDragOver(event, column.id, 0)
+                      }
                       onDrop={(event) => void handleDrop(event, column.id, 0)}
                     />
                     {column.cards.map((card, index) => (
@@ -579,23 +867,29 @@ export function ProjectBoardPage() {
                         <button
                           className={
                             dragCard?.cardId === card.id
-                              ? 'task-card task-card-button task-card-dragging'
-                              : 'task-card task-card-button'
+                              ? "task-card task-card-button task-card-dragging"
+                              : "task-card task-card-button"
                           }
                           draggable={canEditProject}
                           onClick={() => openCardDetails(card.id)}
                           onDragEnd={handleDragEnd}
-                          onDragStart={() => handleDragStart(card.id, column.id, index)}
+                          onDragStart={() =>
+                            handleDragStart(card.id, column.id, index)
+                          }
                           type="button"
                         >
                           <div className="badge-row">
-                            <span className={`badge ${getPriorityTone(card.priority)}`}>
+                            <span
+                              className={`badge ${getPriorityTone(card.priority)}`}
+                            >
                               {formatPriority(card.priority)}
                             </span>
                           </div>
                           <h2 className="task-card-title">{card.title}</h2>
                           <div className="task-card-meta">
-                            <span>{card.assignee?.name ?? 'Sem responsavel'}</span>
+                            <span>
+                              {card.assignee?.name ?? "Sem responsavel"}
+                            </span>
                             <span className={getDueDateTone(card.dueDate)}>
                               {formatShortDate(card.dueDate)}
                             </span>
@@ -604,9 +898,15 @@ export function ProjectBoardPage() {
                         <div
                           className={getDropZoneClassName(column.id, index + 1)}
                           onDragOver={(event) =>
-                            handleDropTargetDragOver(event, column.id, index + 1)
+                            handleDropTargetDragOver(
+                              event,
+                              column.id,
+                              index + 1,
+                            )
                           }
-                          onDrop={(event) => void handleDrop(event, column.id, index + 1)}
+                          onDrop={(event) =>
+                            void handleDrop(event, column.id, index + 1)
+                          }
                         />
                       </Fragment>
                     ))}
@@ -614,11 +914,14 @@ export function ProjectBoardPage() {
                 ) : (
                   <div
                     className={getDropZoneClassName(column.id, 0)}
-                    onDragOver={(event) => handleDropTargetDragOver(event, column.id, 0)}
+                    onDragOver={(event) =>
+                      handleDropTargetDragOver(event, column.id, 0)
+                    }
                     onDrop={(event) => void handleDrop(event, column.id, 0)}
                   >
                     <div className="task-empty">
-                      Nenhum card nesta coluna ainda. Use o botao acima para cadastrar o primeiro.
+                      Nenhum card nesta coluna ainda. Use o botao acima para
+                      cadastrar o primeiro.
                     </div>
                   </div>
                 )}
@@ -634,10 +937,63 @@ export function ProjectBoardPage() {
       ) : null}
 
       <Modal
+        title="Nova coluna"
+        description="Adicione uma nova coluna ao quadro Kanban."
+        open={isAddColumnOpen}
+        onClose={() => setIsAddColumnOpen(false)}
+        footer={
+          <>
+            <button
+              className="secondary-button"
+              onClick={() => setIsAddColumnOpen(false)}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="primary-button"
+              disabled={addColumnMutation.isPending || !newColumnTitle.trim()}
+              onClick={() => void addColumnMutation.mutateAsync(newColumnTitle.trim())}
+              type="button"
+            >
+              {addColumnMutation.isPending ? "Criando..." : "Criar coluna"}
+            </button>
+          </>
+        }
+      >
+        <div className="form-grid">
+          <div className="field-group">
+            <label className="field-label" htmlFor="new-column-title">
+              Nome da coluna
+            </label>
+            <input
+              autoFocus
+              className="field-input"
+              id="new-column-title"
+              onChange={(e) => setNewColumnTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newColumnTitle.trim()) {
+                  e.preventDefault();
+                  void addColumnMutation.mutateAsync(newColumnTitle.trim());
+                }
+              }}
+              type="text"
+              value={newColumnTitle}
+            />
+          </div>
+          {columnError ? <p className="form-error">{columnError}</p> : null}
+        </div>
+      </Modal>
+
+      <Modal
         description="O card pode ser criado com titulo, responsavel e prioridade. O prazo agora e opcional."
         footer={
           <>
-            <button className="secondary-button" onClick={() => setIsCreateModalOpen(false)} type="button">
+            <button
+              className="secondary-button"
+              onClick={() => setIsCreateModalOpen(false)}
+              type="button"
+            >
               Cancelar
             </button>
             <button
@@ -646,7 +1002,7 @@ export function ProjectBoardPage() {
               form="create-card-form"
               type="submit"
             >
-              {createCardMutation.isPending ? 'Salvando...' : 'Criar card'}
+              {createCardMutation.isPending ? "Salvando..." : "Criar card"}
             </button>
           </>
         }
@@ -654,7 +1010,11 @@ export function ProjectBoardPage() {
         open={isCreateModalOpen}
         title="Novo card"
       >
-        <form className="form-grid" id="create-card-form" onSubmit={handleCreateCard}>
+        <form
+          className="form-grid"
+          id="create-card-form"
+          onSubmit={handleCreateCard}
+        >
           <div className="field-group">
             <label className="field-label" htmlFor="create-card-title">
               Titulo
@@ -769,10 +1129,10 @@ export function ProjectBoardPage() {
           </div>
 
           <div className="field-group">
-                  <label className="field-label" htmlFor="create-card-due-date">
-                    Prazo (opcional)
-                  </label>
-                  <input
+            <label className="field-label" htmlFor="create-card-due-date">
+              Prazo (opcional)
+            </label>
+            <input
               className="field-input"
               id="create-card-due-date"
               onChange={(event) =>
@@ -781,9 +1141,9 @@ export function ProjectBoardPage() {
                   dueDate: event.target.value,
                 }))
               }
-                    type="date"
-                    value={createCardForm.dueDate}
-                  />
+              type="date"
+              value={createCardForm.dueDate}
+            />
           </div>
 
           {createError ? <p className="form-error">{createError}</p> : null}
@@ -803,25 +1163,31 @@ export function ProjectBoardPage() {
             </button>
             <button
               className="secondary-button button-danger"
-              disabled={archiveCardMutation.isPending || !cardQuery.data || !canEditProject}
+              disabled={
+                archiveCardMutation.isPending ||
+                !cardQuery.data ||
+                !canEditProject
+              }
               onClick={() => void archiveCardMutation.mutateAsync()}
               type="button"
             >
-              {archiveCardMutation.isPending ? 'Arquivando...' : 'Arquivar'}
+              {archiveCardMutation.isPending ? "Arquivando..." : "Arquivar"}
             </button>
             <button
               className="primary-button"
-              disabled={saveCardMutation.isPending || !cardQuery.data || !canEditProject}
+              disabled={
+                saveCardMutation.isPending || !cardQuery.data || !canEditProject
+              }
               form="edit-card-form"
               type="submit"
             >
-              {saveCardMutation.isPending ? 'Salvando...' : 'Salvar card'}
+              {saveCardMutation.isPending ? "Salvando..." : "Salvar card"}
             </button>
           </>
         }
         onClose={() => setSelectedCardId(null)}
         open={Boolean(selectedCardId)}
-        title={cardQuery.data?.title ?? 'Detalhe do card'}
+        title={cardQuery.data?.title ?? "Detalhe do card"}
       >
         {cardQuery.isLoading ? (
           <StatusState
@@ -836,17 +1202,27 @@ export function ProjectBoardPage() {
             tone="error"
             title="Nao foi possivel carregar o card"
             copy={
-              cardQuery.error instanceof Error ? cardQuery.error.message : 'Tente novamente em instantes.'
+              cardQuery.error instanceof Error
+                ? cardQuery.error.message
+                : "Tente novamente em instantes."
             }
           />
         ) : null}
 
         {cardQuery.data ? (
           <div className="card-detail-stack">
-            <form className="form-grid" id="edit-card-form" onSubmit={handleSaveCard}>
+            <form
+              className="form-grid"
+              id="edit-card-form"
+              onSubmit={handleSaveCard}
+            >
               <div className="badge-row">
-                <span className="badge badge-gray">Coluna atual: {currentCardColumnName ?? 'Sem coluna'}</span>
-                <span className={`badge ${getPriorityTone(cardQuery.data.priority)}`}>
+                <span className="badge badge-gray">
+                  Coluna atual: {currentCardColumnName ?? "Sem coluna"}
+                </span>
+                <span
+                  className={`badge ${getPriorityTone(cardQuery.data.priority)}`}
+                >
                   {formatPriority(cardQuery.data.priority)}
                 </span>
               </div>
@@ -1026,7 +1402,9 @@ export function ProjectBoardPage() {
               isLoading={checklistQuery.isLoading}
               items={checklistItems}
               readOnly={!canEditProject}
-              onCreate={(title) => createChecklistItemMutation.mutateAsync(title)}
+              onCreate={(title) =>
+                createChecklistItemMutation.mutateAsync(title)
+              }
               onMove={handleChecklistMove}
               onRename={handleChecklistRename}
               onToggle={handleChecklistToggle}

@@ -2,17 +2,17 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 
-import { ProjectAccessService } from '../common/services/project-access.service';
-import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
-import { PrismaService } from '../prisma/prisma.service';
-import { publicUserSelect } from '../users/user-select';
-import { normalizeDateInput } from '../common/utils/normalize-date-input.util';
-import { CreateCardDto } from './dto/create-card.dto';
-import { MoveCardDto } from './dto/move-card.dto';
-import { UpdateCardDto } from './dto/update-card.dto';
-import { insertIntoList, reorderWithinList } from './utils/reorder.util';
+import { ProjectAccessService } from "../common/services/project-access.service";
+import { AuthenticatedUser } from "../common/interfaces/authenticated-user.interface";
+import { PrismaService } from "../prisma/prisma.service";
+import { publicUserSelect } from "../users/user-select";
+import { normalizeDateInput } from "../common/utils/normalize-date-input.util";
+import { CreateCardDto } from "./dto/create-card.dto";
+import { MoveCardDto } from "./dto/move-card.dto";
+import { UpdateCardDto } from "./dto/update-card.dto";
+import { insertIntoList, reorderWithinList } from "./utils/reorder.util";
 
 @Injectable()
 export class CardsService {
@@ -21,10 +21,20 @@ export class CardsService {
     private readonly projectAccessService: ProjectAccessService,
   ) {}
 
-  async create(user: AuthenticatedUser, columnId: string, createCardDto: CreateCardDto) {
+  async create(
+    user: AuthenticatedUser,
+    columnId: string,
+    createCardDto: CreateCardDto,
+  ) {
     const column = await this.getColumnWithProject(columnId);
-    await this.projectAccessService.ensureProjectAccess(user, column.board.projectId);
-    await this.projectAccessService.ensureProjectWriteAccess(user, column.board.projectId);
+    await this.projectAccessService.ensureProjectAccess(
+      user,
+      column.board.projectId,
+    );
+    await this.projectAccessService.ensureProjectWriteAccess(
+      user,
+      column.board.projectId,
+    );
     await this.projectAccessService.ensureAssignableUser(
       column.board.projectId,
       createCardDto.assigneeId,
@@ -53,20 +63,40 @@ export class CardsService {
 
   async findOne(user: AuthenticatedUser, id: string) {
     const card = await this.findCardWithProject(id);
-    await this.projectAccessService.ensureProjectAccess(user, card.column.board.projectId);
+    await this.projectAccessService.ensureProjectAccess(
+      user,
+      card.column.board.projectId,
+    );
     return card;
   }
 
-  async update(user: AuthenticatedUser, id: string, updateCardDto: UpdateCardDto) {
+  async update(
+    user: AuthenticatedUser,
+    id: string,
+    updateCardDto: UpdateCardDto,
+  ) {
     const card = await this.findCardWithProject(id);
-    await this.projectAccessService.ensureProjectAccess(user, card.column.board.projectId);
-    await this.projectAccessService.ensureProjectWriteAccess(user, card.column.board.projectId);
+
+    console.log("[DEBUG] Update card:", {
+      cardId: id,
+      currentCard: card,
+      updateData: updateCardDto,
+    });
+
+    await this.projectAccessService.ensureProjectAccess(
+      user,
+      card.column.board.projectId,
+    );
+    await this.projectAccessService.ensureProjectWriteAccess(
+      user,
+      card.column.board.projectId,
+    );
     await this.projectAccessService.ensureAssignableUser(
       card.column.board.projectId,
       updateCardDto.assigneeId,
     );
 
-    return this.prisma.card.update({
+    const result = await this.prisma.card.update({
       where: { id },
       data: {
         title: updateCardDto.title,
@@ -74,25 +104,40 @@ export class CardsService {
         assigneeId: updateCardDto.assigneeId,
         priority: updateCardDto.priority,
         dueDate:
-          updateCardDto.dueDate === undefined ? undefined : normalizeDateInput(updateCardDto.dueDate),
+          updateCardDto.dueDate === undefined
+            ? undefined
+            : normalizeDateInput(updateCardDto.dueDate),
       },
       include: this.cardInclude,
     });
+
+    console.log("[DEBUG] Card updated successfully:", result);
+    return result;
   }
 
   async move(user: AuthenticatedUser, id: string, moveCardDto: MoveCardDto) {
     const card = await this.findCardWithProject(id);
-    await this.projectAccessService.ensureProjectAccess(user, card.column.board.projectId);
-    await this.projectAccessService.ensureProjectWriteAccess(user, card.column.board.projectId);
+    await this.projectAccessService.ensureProjectAccess(
+      user,
+      card.column.board.projectId,
+    );
+    await this.projectAccessService.ensureProjectWriteAccess(
+      user,
+      card.column.board.projectId,
+    );
 
     if (card.archived) {
-      throw new BadRequestException('Cards arquivados nao podem ser movidos.');
+      throw new BadRequestException("Cards arquivados nao podem ser movidos.");
     }
 
-    const targetColumn = await this.getColumnWithProject(moveCardDto.targetColumnId);
+    const targetColumn = await this.getColumnWithProject(
+      moveCardDto.targetColumnId,
+    );
 
     if (targetColumn.boardId !== card.column.boardId) {
-      throw new BadRequestException('O card so pode ser movido dentro do mesmo board.');
+      throw new BadRequestException(
+        "O card so pode ser movido dentro do mesmo board.",
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -103,7 +148,7 @@ export class CardsService {
             archived: false,
           },
           orderBy: {
-            position: 'asc',
+            position: "asc",
           },
           select: {
             id: true,
@@ -112,7 +157,11 @@ export class CardsService {
       ).map((item) => item.id);
 
       if (card.columnId === targetColumn.id) {
-        const reorderedIds = reorderWithinList(sourceIds, card.id, moveCardDto.targetPosition);
+        const reorderedIds = reorderWithinList(
+          sourceIds,
+          card.id,
+          moveCardDto.targetPosition,
+        );
 
         await Promise.all(
           reorderedIds.map((cardId, position) =>
@@ -133,7 +182,7 @@ export class CardsService {
             archived: false,
           },
           orderBy: {
-            position: 'asc',
+            position: "asc",
           },
           select: {
             id: true,
@@ -142,7 +191,11 @@ export class CardsService {
       ).map((item) => item.id);
 
       const nextSourceIds = sourceIds.filter((cardId) => cardId !== card.id);
-      const nextTargetIds = insertIntoList(targetIds, card.id, moveCardDto.targetPosition);
+      const nextTargetIds = insertIntoList(
+        targetIds,
+        card.id,
+        moveCardDto.targetPosition,
+      );
 
       await Promise.all(
         nextSourceIds.map((cardId, position) =>
@@ -171,8 +224,14 @@ export class CardsService {
 
   async archive(user: AuthenticatedUser, id: string) {
     const card = await this.findCardWithProject(id);
-    await this.projectAccessService.ensureProjectAccess(user, card.column.board.projectId);
-    await this.projectAccessService.ensureProjectWriteAccess(user, card.column.board.projectId);
+    await this.projectAccessService.ensureProjectAccess(
+      user,
+      card.column.board.projectId,
+    );
+    await this.projectAccessService.ensureProjectWriteAccess(
+      user,
+      card.column.board.projectId,
+    );
 
     if (!card.archived) {
       await this.prisma.$transaction(async (tx) => {
@@ -183,7 +242,7 @@ export class CardsService {
               archived: false,
             },
             orderBy: {
-              position: 'asc',
+              position: "asc",
             },
             select: {
               id: true,
@@ -244,7 +303,7 @@ export class CardsService {
     });
 
     if (!column) {
-      throw new NotFoundException('Coluna nao encontrada.');
+      throw new NotFoundException("Coluna nao encontrada.");
     }
 
     return column;
@@ -257,7 +316,7 @@ export class CardsService {
     });
 
     if (!card) {
-      throw new NotFoundException('Card nao encontrado.');
+      throw new NotFoundException("Card nao encontrado.");
     }
 
     return card;

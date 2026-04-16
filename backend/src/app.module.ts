@@ -8,7 +8,9 @@ import { AuthModule } from './auth/auth.module';
 import { BoardsModule } from './boards/boards.module';
 import { CardsModule } from './cards/cards.module';
 import { ChecklistModule } from './checklist/checklist.module';
+import { ColumnsModule } from './columns/columns.module';
 import { CommentsModule } from './comments/comments.module';
+import { FoldersModule } from './folders/folders.module';
 import { CommonModule } from './common/common.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
@@ -38,9 +40,11 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     ProjectsModule,
     BoardsModule,
+    ColumnsModule,
     CardsModule,
     CommentsModule,
     ChecklistModule,
+    FoldersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

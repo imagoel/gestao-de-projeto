@@ -83,12 +83,31 @@ model Project {
   ownerId String @map("owner_id")
   owner   User   @relation("ProjectOwner", fields: [ownerId], references: [id])
 
+  // Pasta (opcional) para agrupar projetos
+  folderId String?        @map("folder_id")
+  folder   ProjectFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
   // Relações
   members      ProjectMember[]
   board        Board?
   activityLogs ActivityLog[]
 
   @@map("projects")
+}
+
+// ============================================================
+// PROJECT FOLDERS — agrupamento livre de projetos
+// ============================================================
+
+model ProjectFolder {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  projects Project[]
+
+  @@map("project_folders")
 }
 
 model ProjectMember {
