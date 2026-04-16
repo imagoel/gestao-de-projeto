@@ -276,6 +276,21 @@ textarea {
   gap: 16px;
 }
 
+.task-card-rename {
+  margin-left: auto;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #6f6b63;
+  padding: 2px 6px;
+  border-radius: 6px;
+  user-select: none;
+}
+
+.task-card-rename:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #171717;
+}
+
 .app-foot-actions {
   display: flex;
   flex-direction: column;

@@ -64,6 +64,10 @@ const initialEditCardForm: EditCardFormState = {
 
 const priorityOptions: CardPriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
+// Feature flag: column management UI (reorder arrows + add new column).
+// Hidden for the current MVP; toggle to re-enable in the future.
+const SHOW_COLUMN_MANAGEMENT = false;
+
 type DragCardState = {
   cardId: string;
   sourceColumnId: string;
@@ -383,6 +387,35 @@ export function ProjectBoardPage() {
     },
   });
 
+  const renameCardMutation = useMutation({
+    mutationFn: async (payload: {
+      cardId: string;
+      title: string;
+      assigneeId: string;
+      priority: CardPriority;
+      description?: string | null;
+      dueDate?: string | null;
+    }) =>
+      api.updateCard(token!, payload.cardId, {
+        title: payload.title,
+        assigneeId: payload.assigneeId,
+        priority: payload.priority,
+        description: payload.description ?? undefined,
+        dueDate: payload.dueDate ?? null,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
+      setBoardActionError(null);
+    },
+    onError: (error) => {
+      setBoardActionError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel renomear o card.",
+      );
+    },
+  });
+
   const reorderColumnMutation = useMutation({
     mutationFn: async (payload: { columnId: string; targetPosition: number }) =>
       api.reorderColumn(token!, payload.columnId, {
@@ -657,7 +690,7 @@ export function ProjectBoardPage() {
           <Link className="secondary-button" to={`/projetos/${projectId}`}>
             Ver detalhes
           </Link>
-          {canEditProject ? (
+          {SHOW_COLUMN_MANAGEMENT && canEditProject ? (
             <button
               className="secondary-button"
               onClick={() => {
@@ -783,7 +816,7 @@ export function ProjectBoardPage() {
                     </span>
                   )}
                   <div className="board-column-header-actions">
-                    {canEditProject && columns.length > 1 ? (
+                    {SHOW_COLUMN_MANAGEMENT && canEditProject && columns.length > 1 ? (
                       <>
                         {column.position > 0 ? (
                           <button
@@ -884,6 +917,33 @@ export function ProjectBoardPage() {
                             >
                               {formatPriority(card.priority)}
                             </span>
+                            {canEditProject ? (
+                              <span
+                                aria-label="Renomear card"
+                                className="task-card-rename"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  const next = window.prompt(
+                                    "Novo nome do card:",
+                                    card.title,
+                                  );
+                                  const trimmed = next?.trim();
+                                  if (!trimmed || trimmed === card.title) return;
+                                  void renameCardMutation.mutateAsync({
+                                    cardId: card.id,
+                                    title: trimmed,
+                                    assigneeId: card.assignee?.id ?? "",
+                                    priority: card.priority,
+                                    description: card.description,
+                                    dueDate: card.dueDate,
+                                  });
+                                }}
+                                role="button"
+                                title="Renomear card"
+                              >
+                                ✎
+                              </span>
+                            ) : null}
                           </div>
                           <h2 className="task-card-title">{card.title}</h2>
                           <div className="task-card-meta">
