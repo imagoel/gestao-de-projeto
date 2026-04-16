@@ -73,6 +73,26 @@ export function ProjectsPage() {
     enabled: Boolean(token && user?.role === 'ADMIN' && isCreateModalOpen),
   });
 
+  const [renamingFolder, setRenamingFolder] = useState<ProjectFolder | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+
+  const renameFolderMutation = useMutation({
+    mutationFn: (payload: { folderId: string; name: string }) =>
+      api.updateFolder(token!, payload.folderId, { name: payload.name }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['folders'] });
+      setRenamingFolder(null);
+      setRenameValue('');
+      setRenameError(null);
+    },
+    onError: (error) => {
+      setRenameError(
+        error instanceof ApiError ? error.message : 'Nao foi possivel renomear a pasta.',
+      );
+    },
+  });
+
   const availableUsers = usersQuery.data ?? [];
   const folders = foldersQuery.data ?? [];
   const isAdmin = user?.role === 'ADMIN';
@@ -96,8 +116,8 @@ export function ProjectsPage() {
         name: projectForm.name,
         description: projectForm.description || undefined,
         deadline: projectForm.deadline || undefined,
-        ownerId: projectForm.ownerId,
-        memberIds: projectForm.memberIds,
+        ownerId: isAdmin ? projectForm.ownerId : (user?.id ?? ''),
+        memberIds: isAdmin ? projectForm.memberIds : [],
       }),
     onSuccess: async (project) => {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -229,11 +249,9 @@ export function ProjectsPage() {
           Nova pasta
         </button>
       ) : null}
-      {isAdmin ? (
-        <button className="primary-button" onClick={openCreateModal} type="button">
-          Novo projeto
-        </button>
-      ) : null}
+      <button className="primary-button" onClick={openCreateModal} type="button">
+        Novo projeto
+      </button>
     </div>
   );
 
@@ -282,19 +300,32 @@ export function ProjectsPage() {
             <span className="folder-count">({projects.length})</span>
           </button>
           {folder && isAdmin ? (
-            <button
-              className="text-button"
-              disabled={deleteFolderMutation.isPending}
-              onClick={() => {
-                if (window.confirm(`Apagar a pasta "${folder.name}"? Os projetos voltam para "Sem pasta".`)) {
-                  void deleteFolderMutation.mutateAsync(folder.id);
-                }
-              }}
-              style={{ color: '#8c2f25' }}
-              type="button"
-            >
-              Apagar pasta
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="text-button"
+                onClick={() => {
+                  setRenamingFolder(folder);
+                  setRenameValue(folder.name);
+                  setRenameError(null);
+                }}
+                type="button"
+              >
+                Renomear
+              </button>
+              <button
+                className="text-button"
+                disabled={deleteFolderMutation.isPending}
+                onClick={() => {
+                  if (window.confirm(`Apagar a pasta "${folder.name}"? Os projetos voltam para "Sem pasta".`)) {
+                    void deleteFolderMutation.mutateAsync(folder.id);
+                  }
+                }}
+                style={{ color: '#8c2f25' }}
+                type="button"
+              >
+                Apagar pasta
+              </button>
+            </div>
           ) : null}
         </header>
         {isOpen ? (
@@ -355,6 +386,53 @@ export function ProjectsPage() {
           />
         )
       ) : null}
+
+      <Modal
+        title="Renomear pasta"
+        description="Atualize o nome da pasta. Os projetos contidos sao mantidos."
+        open={Boolean(renamingFolder)}
+        onClose={() => setRenamingFolder(null)}
+        footer={
+          <>
+            <button
+              className="secondary-button"
+              onClick={() => setRenamingFolder(null)}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="primary-button"
+              disabled={renameFolderMutation.isPending || !renameValue.trim() || !renamingFolder}
+              onClick={() =>
+                renamingFolder &&
+                void renameFolderMutation.mutateAsync({
+                  folderId: renamingFolder.id,
+                  name: renameValue.trim(),
+                })
+              }
+              type="button"
+            >
+              {renameFolderMutation.isPending ? 'Salvando...' : 'Salvar'}
+            </button>
+          </>
+        }
+      >
+        <div className="form-grid">
+          <div className="field-group">
+            <label className="field-label" htmlFor="rename-folder-name">Nome da pasta</label>
+            <input
+              autoFocus
+              className="field-input"
+              id="rename-folder-name"
+              onChange={(e) => setRenameValue(e.target.value)}
+              type="text"
+              value={renameValue}
+            />
+          </div>
+          {renameError ? <p className="form-error">{renameError}</p> : null}
+        </div>
+      </Modal>
 
       <Modal
         title="Nova pasta"
@@ -472,46 +550,54 @@ export function ProjectsPage() {
               <p className="field-helper">Voce pode deixar este campo em branco no projeto.</p>
             </div>
 
-            <div className="field-group">
-              <label className="field-label" htmlFor="project-owner">Owner</label>
-              <select
-                className="field-input"
-                id="project-owner"
-                onChange={(event) =>
-                  setProjectForm((currentForm) => ({ ...currentForm, ownerId: event.target.value }))
-                }
-                required
-                value={projectForm.ownerId}
-              >
-                <option value="">Selecione</option>
-                {availableUsers.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name} ({option.email})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {isAdmin ? (
+              <div className="field-group">
+                <label className="field-label" htmlFor="project-owner">Owner</label>
+                <select
+                  className="field-input"
+                  id="project-owner"
+                  onChange={(event) =>
+                    setProjectForm((currentForm) => ({ ...currentForm, ownerId: event.target.value }))
+                  }
+                  required
+                  value={projectForm.ownerId}
+                >
+                  <option value="">Selecione</option>
+                  {availableUsers.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name} ({option.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
           </div>
 
-          <div className="field-group">
-            <span className="field-label">Membros iniciais</span>
-            <div className="checkbox-list">
-              {usersQuery.isLoading ? <p className="field-helper">Carregando usuarios...</p> : null}
-              {availableUsers.map((availableUser) => (
-                <label className="checkbox-item" key={availableUser.id}>
-                  <input
-                    checked={projectForm.memberIds.includes(availableUser.id)}
-                    onChange={() => toggleMember(availableUser.id)}
-                    type="checkbox"
-                  />
-                  <span>
-                    {availableUser.name} <small>{availableUser.email}</small>
-                  </span>
-                </label>
-              ))}
+          {isAdmin ? (
+            <div className="field-group">
+              <span className="field-label">Membros iniciais</span>
+              <div className="checkbox-list">
+                {usersQuery.isLoading ? <p className="field-helper">Carregando usuarios...</p> : null}
+                {availableUsers.map((availableUser) => (
+                  <label className="checkbox-item" key={availableUser.id}>
+                    <input
+                      checked={projectForm.memberIds.includes(availableUser.id)}
+                      onChange={() => toggleMember(availableUser.id)}
+                      type="checkbox"
+                    />
+                    <span>
+                      {availableUser.name} <small>{availableUser.email}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="field-helper">O owner sempre sera incluido como gerente do projeto.</p>
             </div>
-            <p className="field-helper">O owner sempre sera incluido como gerente do projeto.</p>
-          </div>
+          ) : (
+            <p className="field-helper">
+              Voce sera registrado como owner do projeto. Adicione membros depois pela tela de detalhes.
+            </p>
+          )}
 
           {formError ? <p className="form-error">{formError}</p> : null}
           {projectForm.deadline ? (

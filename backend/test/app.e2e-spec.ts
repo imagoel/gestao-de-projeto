@@ -724,6 +724,29 @@ describe('Gestao GTI API (e2e)', () => {
       .expect(403);
   });
 
+  it('allows a member to create their own project (auto-assigned as owner)', async () => {
+    const member = await createMember('criador@empresa.com');
+    const memberToken = await loginUser('criador@empresa.com', 'membro1234');
+
+    // Member creates project without specifying owner — backend forces self
+    const created = await request(app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ name: 'Projeto criado por membro' })
+      .expect(201);
+
+    expect(created.body.ownerId).toBe(member.id);
+    expect(created.body.members).toHaveLength(1);
+    expect(created.body.members[0].user.id).toBe(member.id);
+
+    // Member sees the project they own in their list
+    const list = await request(app.getHttpServer())
+      .get('/api/projects')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(list.body.find((p: { id: string }) => p.id === created.body.id)).toBeDefined();
+  });
+
   it('allows viewers to read the project but blocks write operations', async () => {
     const adminToken = await getAdminToken();
     const member = await createMember('editor@empresa.com');

@@ -13,8 +13,9 @@ export class CreateProjectDto {
   @IsDateString()
   deadline?: string | null;
 
+  @IsOptional()
   @IsUUID()
-  ownerId!: string;
+  ownerId?: string;
 
   @IsOptional()
   @IsArray()

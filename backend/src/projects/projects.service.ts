@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, ProjectRole, ProjectStatus } from '@prisma/client';
+import { Prisma, ProjectRole, ProjectStatus, UserRole } from '@prisma/client';
 
 import { ProjectAccessService } from '../common/services/project-access.service';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -70,9 +70,18 @@ export class ProjectsService {
     });
   }
 
-  async create(createProjectDto: CreateProjectDto) {
+  async create(currentUser: AuthenticatedUser, createProjectDto: CreateProjectDto) {
+    // Members can only create projects owned by themselves; admins can pick any owner.
+    const ownerId =
+      currentUser.role === UserRole.ADMIN
+        ? (createProjectDto.ownerId ?? currentUser.id)
+        : currentUser.id;
+
+    const memberIds =
+      currentUser.role === UserRole.ADMIN ? (createProjectDto.memberIds ?? []) : [];
+
     const owner = await this.prisma.user.findUnique({
-      where: { id: createProjectDto.ownerId },
+      where: { id: ownerId },
       select: { id: true },
     });
 
@@ -80,9 +89,7 @@ export class ProjectsService {
       throw new NotFoundException('Owner do projeto nao encontrado.');
     }
 
-    const uniqueMemberIds = Array.from(
-      new Set([...(createProjectDto.memberIds ?? []), createProjectDto.ownerId]),
-    );
+    const uniqueMemberIds = Array.from(new Set([...memberIds, ownerId]));
 
     await this.usersService.ensureUsersExist(uniqueMemberIds);
 
@@ -92,7 +99,7 @@ export class ProjectsService {
           name: createProjectDto.name,
           description: createProjectDto.description,
           deadline: normalizeDateInput(createProjectDto.deadline),
-          ownerId: createProjectDto.ownerId,
+          ownerId: ownerId,
           status: ProjectStatus.ACTIVE,
         },
       });
@@ -101,7 +108,7 @@ export class ProjectsService {
         data: uniqueMemberIds.map((userId) => ({
           projectId: project.id,
           userId,
-          role: userId === createProjectDto.ownerId ? ProjectRole.MANAGER : ProjectRole.MEMBER,
+          role: userId === ownerId ? ProjectRole.MANAGER : ProjectRole.MEMBER,
         })),
         skipDuplicates: true,
       });

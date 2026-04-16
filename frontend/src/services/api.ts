@@ -144,7 +144,7 @@ export const api = {
       name: string;
       description?: string;
       deadline?: string | null;
-      ownerId: string;
+      ownerId?: string;
       memberIds?: string[];
     },
   ) {

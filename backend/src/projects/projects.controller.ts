@@ -35,10 +35,12 @@ export class ProjectsController {
     return this.projectsService.findOne(user, id);
   }
 
-  @Roles(UserRole.ADMIN)
   @Post()
-  create(@Body() createProjectDto: CreateProjectDto) {
-    return this.projectsService.create(createProjectDto);
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() createProjectDto: CreateProjectDto,
+  ) {
+    return this.projectsService.create(user, createProjectDto);
   }
 
   @Roles(UserRole.ADMIN)
