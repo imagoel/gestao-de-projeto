@@ -4,6 +4,7 @@ import { NavLink, type NavLinkRenderProps } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
 import gtiLogo from '../assets/gti-logo.png';
+import minhaLogo from '../assets/minha-logo.png';
 import { ApiError, api } from '../services/api';
 import { Modal } from './modal';
 
@@ -113,6 +114,12 @@ export function AppShell({
               <small>{user?.role === 'ADMIN' ? 'Admin' : 'Membro'}</small>
             </div>
           </div>
+          <img
+            alt=""
+            aria-hidden="true"
+            className="app-sidebar-brand-mark"
+            src={minhaLogo}
+          />
           <div className="app-foot-actions">
             <button
               className="secondary-button app-logout-button"

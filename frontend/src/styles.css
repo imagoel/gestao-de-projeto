@@ -42,23 +42,14 @@ textarea {
   min-height: 100vh;
 }
 
-.system-corner-brand {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 5;
-  pointer-events: none;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-}
-
-.system-corner-brand-image {
-  width: min(19vw, 144px);
-  max-width: 144px;
+.app-sidebar-brand-mark {
+  display: block;
+  width: 100%;
+  max-width: 140px;
   height: auto;
-  opacity: 0.92;
-  filter: drop-shadow(0 12px 22px rgba(18, 71, 124, 0.14));
+  margin: 0 auto 12px;
+  opacity: 0.9;
+  align-self: center;
 }
 
 .app-shell {
@@ -1101,15 +1092,6 @@ textarea {
 }
 
 @media (max-width: 640px) {
-  .system-corner-brand {
-    right: 12px;
-    bottom: 12px;
-  }
-
-  .system-corner-brand-image {
-    width: min(34vw, 108px);
-  }
-
   .app-main {
     padding: 20px;
     padding-bottom: 84px;
