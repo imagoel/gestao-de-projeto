@@ -12,3 +12,5 @@ agents.md
 docs/
 frontend/vite.config.js
 frontend/vite.config.d.ts
+.claude/
+.qwen/

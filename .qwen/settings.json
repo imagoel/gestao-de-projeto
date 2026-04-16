@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(docker-compose *)",
-      "Bash(wsl *)"
-    ]
-  },
-  "$version": 3
-}

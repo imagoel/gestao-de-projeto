@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(///wsl.localhost/Ubuntu/home/imagoel/projetos/gestao-gti/**)",
-      "Bash(npx tsc *)",
-      "Bash(wsl *)"
-    ]
-  }
-}
