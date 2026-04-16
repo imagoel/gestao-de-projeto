@@ -91,6 +91,17 @@ export const api = {
     return request<ApiUser>('/auth/me', { token });
   },
 
+  changePassword(
+    token: string,
+    payload: { currentPassword: string; newPassword: string },
+  ) {
+    return request<{ success: true }>('/auth/password', {
+      method: 'PATCH',
+      token,
+      body: payload,
+    });
+  },
+
   getUsers(token: string) {
     return request<ApiUser[]>('/users', { token });
   },

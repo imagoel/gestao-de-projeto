@@ -25,6 +25,7 @@ describe('AuthService', () => {
     authService = new AuthService(
       usersService as unknown as UsersService,
       jwtService as unknown as JwtService,
+      {} as never,
     );
   });
 

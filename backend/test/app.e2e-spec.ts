@@ -724,6 +724,44 @@ describe('Gestao GTI API (e2e)', () => {
       .expect(403);
   });
 
+  it('lets the logged-in user change their own password', async () => {
+    await createMember('change-pwd@empresa.com');
+    const memberToken = await loginUser('change-pwd@empresa.com', 'membro1234');
+
+    // Wrong current password -> 401
+    await request(app.getHttpServer())
+      .patch('/api/auth/password')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ currentPassword: 'errada1234', newPassword: 'novaSegura1' })
+      .expect(401);
+
+    // Same password -> 400
+    await request(app.getHttpServer())
+      .patch('/api/auth/password')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ currentPassword: 'membro1234', newPassword: 'membro1234' })
+      .expect(400);
+
+    // Successful change
+    await request(app.getHttpServer())
+      .patch('/api/auth/password')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ currentPassword: 'membro1234', newPassword: 'novaSegura1' })
+      .expect(200);
+
+    // Old password no longer logs in
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'change-pwd@empresa.com', password: 'membro1234' })
+      .expect(401);
+
+    // New password works
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'change-pwd@empresa.com', password: 'novaSegura1' })
+      .expect(201);
+  });
+
   it('allows a member to create their own project (auto-assigned as owner)', async () => {
     const member = await createMember('criador@empresa.com');
     const memberToken = await loginUser('criador@empresa.com', 'membro1234');

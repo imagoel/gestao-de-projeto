@@ -276,6 +276,12 @@ textarea {
   gap: 16px;
 }
 
+.app-foot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .folder-section {
   margin-bottom: 12px;
   padding: 6px 8px 8px;
