@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type DragEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -43,6 +43,17 @@ export function ProjectsPage() {
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [folderError, setFolderError] = useState<string | null>(null);
+  const [openFolders, setOpenFolders] = useState<Set<string>>(() => new Set([UNASSIGNED_KEY]));
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+
+  function toggleFolder(key: string) {
+    setOpenFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   const projectsQuery = useQuery({
     queryKey: ['projects'],
@@ -158,7 +169,15 @@ export function ProjectsPage() {
 
   function renderProjectCard(project: Project) {
     return (
-      <article className="project-card" key={project.id}>
+      <article
+        className="project-card"
+        draggable={isAdmin}
+        key={project.id}
+        onDragStart={(e) => {
+          e.dataTransfer.setData('text/plain', project.id);
+          e.dataTransfer.effectAllowed = 'move';
+        }}
+      >
         <button
           className="project-card-main"
           onClick={() => navigate(`/projetos/${project.id}/quadro`)}
@@ -191,28 +210,6 @@ export function ProjectsPage() {
             Abrir quadro
           </Link>
         </div>
-        {isAdmin ? (
-          <div className="project-card-actions" style={{ marginTop: 4 }}>
-            <label className="field-helper" style={{ marginRight: 8 }}>Pasta:</label>
-            <select
-              className="field-input"
-              disabled={moveProjectMutation.isPending}
-              onChange={(e) =>
-                void moveProjectMutation.mutateAsync({
-                  projectId: project.id,
-                  folderId: e.target.value || null,
-                })
-              }
-              style={{ padding: '6px 10px', fontSize: '0.85rem', maxWidth: 180 }}
-              value={project.folderId ?? ''}
-            >
-              <option value="">Sem pasta</option>
-              {folders.map((f) => (
-                <option key={f.id} value={f.id}>{f.name}</option>
-              ))}
-            </select>
-          </div>
-        ) : null}
       </article>
     );
   }
@@ -244,23 +241,46 @@ export function ProjectsPage() {
     const key = folder?.id ?? UNASSIGNED_KEY;
     const projects = groupedProjects.get(key) ?? [];
     if (projects.length === 0 && !folder) return null;
+    const isOpen = openFolders.has(key);
+    const isDragOver = dragOverKey === key;
+    const targetFolderId = folder?.id ?? null;
+
+    function handleDrop(e: DragEvent) {
+      e.preventDefault();
+      setDragOverKey(null);
+      const projectId = e.dataTransfer.getData('text/plain');
+      if (!projectId) return;
+      void moveProjectMutation.mutateAsync({ projectId, folderId: targetFolderId });
+    }
+
     return (
-      <section key={key} style={{ marginBottom: 24 }}>
-        <header
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 12,
-            gap: 12,
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
-            {folder ? `📁 ${folder.name}` : 'Sem pasta'}
-            <span style={{ marginLeft: 8, color: '#6f6b63', fontSize: '0.85rem', fontWeight: 400 }}>
-              ({projects.length})
+      <section
+        key={key}
+        className={`folder-section${isDragOver ? ' folder-section-drop' : ''}`}
+        onDragOver={(e) => {
+          if (!isAdmin) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (dragOverKey !== key) setDragOverKey(key);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverKey(null);
+        }}
+        onDrop={isAdmin ? handleDrop : undefined}
+      >
+        <header className="folder-header">
+          <button
+            className="folder-toggle"
+            onClick={() => toggleFolder(key)}
+            type="button"
+            aria-expanded={isOpen}
+          >
+            <span className="folder-caret">{isOpen ? '▾' : '▸'}</span>
+            <span className="folder-title">
+              {folder ? `📁 ${folder.name}` : 'Sem pasta'}
             </span>
-          </h2>
+            <span className="folder-count">({projects.length})</span>
+          </button>
           {folder && isAdmin ? (
             <button
               className="text-button"
@@ -277,11 +297,15 @@ export function ProjectsPage() {
             </button>
           ) : null}
         </header>
-        {projects.length > 0 ? (
-          <div className="project-grid">{projects.map(renderProjectCard)}</div>
-        ) : (
-          <p className="field-helper">Pasta vazia. Mova projetos para ca usando o seletor.</p>
-        )}
+        {isOpen ? (
+          projects.length > 0 ? (
+            <div className="project-grid">{projects.map(renderProjectCard)}</div>
+          ) : (
+            <p className="field-helper folder-empty">
+              {isAdmin ? 'Pasta vazia. Arraste projetos ate aqui para mover.' : 'Pasta vazia.'}
+            </p>
+          )
+        ) : null}
       </section>
     );
   }

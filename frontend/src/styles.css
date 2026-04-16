@@ -276,6 +276,71 @@ textarea {
   gap: 16px;
 }
 
+.folder-section {
+  margin-bottom: 12px;
+  padding: 6px 8px 8px;
+  border-radius: 12px;
+  border: 1px dashed transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.folder-section-drop {
+  background: rgba(51, 154, 128, 0.08);
+  border-color: rgba(51, 154, 128, 0.5);
+}
+
+.folder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.folder-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 6px 4px;
+  cursor: pointer;
+  color: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.folder-toggle:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.folder-caret {
+  display: inline-block;
+  width: 12px;
+  color: #6f6b63;
+  font-size: 0.9rem;
+}
+
+.folder-count {
+  color: #6f6b63;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.folder-empty {
+  padding: 12px 4px;
+  margin: 0;
+}
+
+.project-card[draggable="true"] {
+  cursor: grab;
+}
+
+.project-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 .project-card {
   display: grid;
   gap: 12px;
