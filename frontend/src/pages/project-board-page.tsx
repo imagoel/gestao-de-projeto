@@ -1,6 +1,7 @@
 import {
   Fragment,
   useEffect,
+  useMemo,
   useState,
   type DragEvent,
   type FormEvent,
@@ -67,6 +68,13 @@ const priorityOptions: CardPriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 // Feature flag: column management UI (reorder arrows + add new column).
 // Hidden for the current MVP; toggle to re-enable in the future.
 const SHOW_COLUMN_MANAGEMENT = false;
+
+const PRIORITY_WEIGHT: Record<CardPriority, number> = {
+  CRITICAL: 0,
+  HIGH: 1,
+  MEDIUM: 2,
+  LOW: 3,
+};
 
 type DragCardState = {
   cardId: string;
@@ -154,7 +162,15 @@ export function ProjectBoardPage() {
 
   const memberOptions =
     projectQuery.data?.members.map((member) => member.user) ?? [];
-  const columns = boardQuery.data?.columns ?? [];
+  const columns = useMemo(() => {
+    const raw = boardQuery.data?.columns ?? [];
+    return raw.map((col) => ({
+      ...col,
+      cards: [...col.cards].sort(
+        (a, b) => PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority],
+      ),
+    }));
+  }, [boardQuery.data?.columns]);
   const currentProjectMember = projectQuery.data?.members.find(
     (member) => member.user.id === user?.id,
   );
