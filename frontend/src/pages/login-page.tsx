@@ -90,7 +90,6 @@ export function LoginPage() {
       </div>
 
       <footer className="login-footer">
-        <img alt="GTI - Gestao de Tecnologia da Informacao" className="login-footer-logo" src={gtiLogo} />
         <img alt="Immanuel Vicente" className="login-footer-logo" src={minhaLogo} />
       </footer>
     </div>

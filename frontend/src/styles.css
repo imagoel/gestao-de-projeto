@@ -672,17 +672,13 @@ textarea {
 .login-footer {
   margin-top: auto;
   padding: 24px 0 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
+  text-align: center;
 }
 
 .login-footer-logo {
-  height: 56px;
-  width: auto;
+  width: min(28vw, 140px);
+  height: auto;
   opacity: 0.9;
-  object-fit: contain;
 }
 
 .login-stack {
