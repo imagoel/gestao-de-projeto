@@ -45,9 +45,9 @@ textarea {
 .app-sidebar-brand-mark {
   display: block;
   width: 100%;
-  max-width: 140px;
+  max-width: 100px;
   height: auto;
-  margin: 0 auto 12px;
+  margin: 8px auto 4px;
   opacity: 0.9;
   align-self: center;
 }
@@ -74,7 +74,7 @@ textarea {
 
 .app-brand-logo {
   width: 100%;
-  max-width: 170px;
+  max-width: 120px;
   height: auto;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
 }
@@ -672,13 +672,17 @@ textarea {
 .login-footer {
   margin-top: auto;
   padding: 24px 0 12px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
 }
 
 .login-footer-logo {
-  width: min(28vw, 140px);
-  height: auto;
+  height: 56px;
+  width: auto;
   opacity: 0.9;
+  object-fit: contain;
 }
 
 .login-stack {

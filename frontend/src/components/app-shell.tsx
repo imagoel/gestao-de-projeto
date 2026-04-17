@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { NavLink, type NavLinkRenderProps } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
-import gtiLogo from '../assets/gti-logo.png';
+import prefeituraLogo from '../assets/logo-prefeitura-amargosa.png';
 import minhaLogo from '../assets/minha-logo.png';
 import { ApiError, api } from '../services/api';
 import { Modal } from './modal';
@@ -88,9 +88,9 @@ export function AppShell({
       <aside className="app-sidebar">
         <div className="app-brand">
           <img
-            alt="GTI - Gestao de Tecnologia da Informacao"
+            alt="Prefeitura de Amargosa"
             className="app-brand-logo"
-            src={gtiLogo}
+            src={prefeituraLogo}
           />
           <p className="app-brand-title">Gestao de projetos</p>
         </div>
