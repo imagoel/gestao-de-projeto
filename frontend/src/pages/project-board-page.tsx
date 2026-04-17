@@ -700,7 +700,7 @@ export function ProjectBoardPage() {
     <AppShell
       title={projectQuery.data?.name ?? "Quadro Kanban"}
       subtitle="Projetos / quadro"
-      copy="Board unico do MVP com colunas fixas, cards com responsavel e prioridade obrigatorios, prazo opcional, colaboracao no detalhe do card e drag-and-drop no polimento."
+      copy={projectQuery.data?.description || undefined}
       action={
         <div className="page-header-actions">
           <Link className="secondary-button" to={`/projetos/${projectId}`}>
