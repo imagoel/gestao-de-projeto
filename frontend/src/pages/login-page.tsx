@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
+import prefeituraLogo from '../assets/logo-prefeitura-amargosa.png';
 import gtiLogo from '../assets/gti-logo.png';
 import minhaLogo from '../assets/minha-logo.png';
 import { ApiError } from '../services/api';
@@ -43,9 +44,9 @@ export function LoginPage() {
     <div className="login-page">
       <div className="login-stack">
         <img
-          alt="GTI - Gestao de Tecnologia da Informacao"
+          alt="Prefeitura de Amargosa"
           className="login-logo"
-          src={gtiLogo}
+          src={prefeituraLogo}
         />
 
         <form className="login-card" onSubmit={handleSubmit}>
@@ -90,8 +91,18 @@ export function LoginPage() {
       </div>
 
       <footer className="login-footer">
-        <img alt="GTI - Gestao de Tecnologia da Informacao" className="login-footer-logo" src={gtiLogo} />
-        <img alt="Immanuel Vicente" className="login-footer-logo" src={minhaLogo} />
+        <div className="login-footer-logos">
+          <img
+            alt="GTI - Gestao de Tecnologia da Informacao"
+            className="login-footer-logo login-footer-logo-gti"
+            src={gtiLogo}
+          />
+          <img
+            alt="Immanuel Vicente"
+            className="login-footer-logo login-footer-logo-immanuel"
+            src={minhaLogo}
+          />
+        </div>
       </footer>
     </div>
   );
