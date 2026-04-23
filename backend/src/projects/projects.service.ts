@@ -196,8 +196,9 @@ export class ProjectsService {
     });
   }
 
-  async remove(id: string) {
+  async remove(user: AuthenticatedUser, id: string) {
     const project = await this.projectAccessService.ensureProjectExists(id);
+    await this.projectAccessService.ensureProjectDeleteAccess(user, id);
 
     await this.prisma.project.delete({
       where: { id: project.id },

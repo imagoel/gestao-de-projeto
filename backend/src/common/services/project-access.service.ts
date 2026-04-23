@@ -104,6 +104,46 @@ export class ProjectAccessService {
     }
   }
 
+  async ensureProjectDeleteAccess(user: AuthenticatedUser, projectId: string) {
+    if (user.role === UserRole.ADMIN) {
+      return;
+    }
+
+    const project = await this.prisma.project.findFirst({
+      where: this.buildProjectAccessWhere(user, projectId),
+      select: {
+        ownerId: true,
+        members: {
+          where: {
+            userId: user.id,
+          },
+          select: {
+            role: true,
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (!project) {
+      throw new ForbiddenException('Projeto indisponivel para este usuario.');
+    }
+
+    if (project.ownerId === user.id) {
+      return;
+    }
+
+    const membershipRole = project.members[0]?.role;
+
+    if (membershipRole === ProjectRole.MANAGER) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'Apenas o admin global ou participantes com perfil MANAGER podem apagar este projeto.',
+    );
+  }
+
   async ensureAssignableUser(projectId: string, userId: string) {
     const participantCount = await this.prisma.project.count({
       where: {

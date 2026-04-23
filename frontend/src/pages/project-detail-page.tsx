@@ -76,6 +76,16 @@ export function ProjectDetailPage() {
   });
 
   const project = projectQuery.data;
+  const currentProjectMember = project?.members.find(
+    (member) => member.user.id === user?.id,
+  );
+  const canDeleteProject = Boolean(
+    user &&
+      project &&
+      (user.role === 'ADMIN' ||
+        project.ownerId === user.id ||
+        currentProjectMember?.role === 'MANAGER'),
+  );
 
   async function handleDeleteProject() {
     if (!project) {
@@ -98,7 +108,7 @@ export function ProjectDetailPage() {
       <Link className="secondary-button" to="/projetos">
         Voltar aos projetos
       </Link>
-      {user?.role === 'ADMIN' ? (
+      {canDeleteProject ? (
         <button
           className="button-danger"
           disabled={deleteProjectMutation.isPending}
@@ -303,7 +313,7 @@ export function ProjectDetailPage() {
                 <Link className="secondary-button" to="/projetos">
                   Voltar
                 </Link>
-                {user?.role === 'ADMIN' ? (
+                {canDeleteProject ? (
                   <button
                     className="button-danger"
                     disabled={deleteProjectMutation.isPending}

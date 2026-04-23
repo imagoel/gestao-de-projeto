@@ -167,10 +167,14 @@ describe('Gestao GTI API (e2e)', () => {
       .expect(403);
   });
 
-  it('lets admin delete projects and blocks member from deleting them', async () => {
+  it('lets admin, owner, and manager delete projects while blocking regular members', async () => {
     const adminToken = await getAdminToken();
     const member = await createMember('delete-member@empresa.com');
+    const manager = await createMember('delete-manager@empresa.com');
+    const ownerMember = await createMember('delete-owner@empresa.com');
     const memberToken = await getTokenForUser(member.email, 'membro1234');
+    const managerToken = await getTokenForUser(manager.email, 'membro1234');
+    const ownerToken = await getTokenForUser(ownerMember.email, 'membro1234');
 
     const projectResponse = await request(app.getHttpServer())
       .post('/api/projects')
@@ -183,12 +187,48 @@ describe('Gestao GTI API (e2e)', () => {
       .expect(201);
 
     await request(app.getHttpServer())
+      .post(`/api/projects/${projectResponse.body.id}/members`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        userId: manager.id,
+        role: 'MANAGER',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
       .delete(`/api/projects/${projectResponse.body.id}`)
       .set('Authorization', `Bearer ${memberToken}`)
       .expect(403);
 
     await request(app.getHttpServer())
       .delete(`/api/projects/${projectResponse.body.id}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200, { success: true });
+
+    const ownerProjectResponse = await request(app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        name: 'Projeto do proprio membro',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .delete(`/api/projects/${ownerProjectResponse.body.id}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200, { success: true });
+
+    const adminOnlyProjectResponse = await request(app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Projeto admin',
+        ownerId: adminId,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .delete(`/api/projects/${adminOnlyProjectResponse.body.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200, { success: true });
 
@@ -199,6 +239,14 @@ describe('Gestao GTI API (e2e)', () => {
 
     expect(
       projectsResponse.body.some((project: { id: string }) => project.id === projectResponse.body.id),
+    ).toBe(false);
+    expect(
+      projectsResponse.body.some((project: { id: string }) => project.id === ownerProjectResponse.body.id),
+    ).toBe(false);
+    expect(
+      projectsResponse.body.some(
+        (project: { id: string }) => project.id === adminOnlyProjectResponse.body.id,
+      ),
     ).toBe(false);
   });
 
@@ -710,16 +758,16 @@ describe('Gestao GTI API (e2e)', () => {
     expect(projectAfter.body.folderId).toBeNull();
   });
 
-  it('blocks members from managing folders', async () => {
+  it('blocks members from viewing and managing folders', async () => {
     const adminToken = await getAdminToken();
     const member = await createMember('pasta-membro@empresa.com');
     const memberToken = await getTokenForUser(member.email, 'membro1234');
 
-    // Member can list folders
+    // Member cannot list folders
     await request(app.getHttpServer())
       .get('/api/folders')
       .set('Authorization', `Bearer ${memberToken}`)
-      .expect(200);
+      .expect(403);
 
     // Member cannot create
     await request(app.getHttpServer())

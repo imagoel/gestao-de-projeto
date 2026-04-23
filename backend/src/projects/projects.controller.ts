@@ -49,10 +49,9 @@ export class ProjectsController {
     return this.projectsService.update(id, updateProjectDto);
   }
 
-  @Roles(UserRole.ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.projectsService.remove(id);
+  remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.projectsService.remove(user, id);
   }
 
   @Roles(UserRole.ADMIN)

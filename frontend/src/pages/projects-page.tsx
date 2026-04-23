@@ -37,6 +37,7 @@ export function ProjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { token, user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [projectForm, setProjectForm] = useState<ProjectFormState>(initialProjectForm);
   const [formError, setFormError] = useState<string | null>(null);
@@ -64,7 +65,7 @@ export function ProjectsPage() {
   const foldersQuery = useQuery({
     queryKey: ['folders'],
     queryFn: () => api.getFolders(token!),
-    enabled: Boolean(token),
+    enabled: Boolean(token && isAdmin),
   });
 
   const usersQuery = useQuery({
@@ -95,7 +96,6 @@ export function ProjectsPage() {
 
   const availableUsers = usersQuery.data ?? [];
   const folders = foldersQuery.data ?? [];
-  const isAdmin = user?.role === 'ADMIN';
 
   const groupedProjects = useMemo(() => {
     const projects = projectsQuery.data ?? [];
@@ -370,10 +370,16 @@ export function ProjectsPage() {
 
       {!projectsQuery.isLoading && !projectsQuery.isError ? (
         projectsQuery.data && projectsQuery.data.length > 0 ? (
-          <>
-            {folders.map((folder) => renderFolderSection(folder))}
-            {renderFolderSection(null)}
-          </>
+          isAdmin ? (
+            <>
+              {folders.map((folder) => renderFolderSection(folder))}
+              {renderFolderSection(null)}
+            </>
+          ) : (
+            <section className="project-grid">
+              {projectsQuery.data.map(renderProjectCard)}
+            </section>
+          )
         ) : (
           <StatusState
             title="Nenhum projeto disponivel"

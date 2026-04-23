@@ -22,6 +22,7 @@ import { FoldersService } from './folders.service';
 export class FoldersController {
   constructor(private readonly foldersService: FoldersService) {}
 
+  @Roles(UserRole.ADMIN)
   @Get()
   findAll() {
     return this.foldersService.findAll();
