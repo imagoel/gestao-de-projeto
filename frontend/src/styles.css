@@ -690,9 +690,9 @@ textarea {
 }
 
 .login-stack {
-  width: min(100%, 360px);
+  width: min(100%, 460px);
   display: grid;
-  gap: 22px;
+  gap: 28px;
   justify-items: center;
   align-self: center;
 }
@@ -700,7 +700,7 @@ textarea {
 .login-card {
   width: 100%;
   display: grid;
-  gap: 18px;
+  gap: 22px;
   padding: 0;
   border: none;
   background: transparent;
@@ -709,23 +709,22 @@ textarea {
 
 .login-logo {
   display: block;
-  width: 100%;
-  max-width: 280px;
+  width: min(100%, 320px);
   height: auto;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+  object-fit: contain;
 }
 
 .login-title {
   margin: 0;
-  font-size: 1.7rem;
+  font-size: 1.95rem;
   text-align: center;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .login-card .primary-button {
-  min-width: 112px;
+  min-width: 148px;
   justify-self: center;
-  margin-top: 2px;
+  margin-top: 6px;
   background: #9e243d;
   color: #ffffff;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
@@ -751,15 +750,19 @@ textarea {
 .login-card .field-label {
   text-align: center;
   font-weight: 600;
-  color: #666159;
+  color: #4d4942;
+  font-size: 0.95rem;
 }
 
 .login-card .field-input {
   border: none;
-  border-radius: 14px;
+  min-height: 66px;
+  padding: 18px 22px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   text-align: center;
+  font-size: 1rem;
 }
 
 .login-card .field-input::placeholder {
@@ -781,7 +784,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 28px;
+  gap: 22px;
   width: 100%;
 }
 
@@ -791,11 +794,17 @@ textarea {
 }
 
 .login-footer-logo-gti {
-  height: 56px;
+  height: 74px;
 }
 
 .login-footer-logo-immanuel {
-  height: 50px;
+  height: 108px;
+}
+
+.login-footer-divider {
+  width: 1px;
+  height: 112px;
+  background: #cfc8bb;
 }
 
 @media (max-width: 640px) {
@@ -803,8 +812,13 @@ textarea {
     padding: 20px 16px 24px;
   }
 
+  .login-stack {
+    width: min(100%, 380px);
+    gap: 24px;
+  }
+
   .login-logo {
-    max-width: 240px;
+    width: min(100%, 280px);
   }
 
   .login-footer {
@@ -816,30 +830,42 @@ textarea {
   }
 
   .login-footer-logo-gti {
-    height: 46px;
+    height: 60px;
   }
 
   .login-footer-logo-immanuel {
-    height: 40px;
+    height: 84px;
+  }
+
+  .login-footer-divider {
+    height: 94px;
   }
 }
 
 @media (max-width: 420px) {
   .login-stack {
     width: min(100%, 320px);
+    gap: 22px;
+  }
+
+  .login-logo {
+    width: min(100%, 240px);
   }
 
   .login-footer-logos {
     gap: 14px;
-    flex-wrap: wrap;
   }
 
   .login-footer-logo-gti {
-    height: 40px;
+    height: 48px;
   }
 
   .login-footer-logo-immanuel {
-    height: 34px;
+    height: 70px;
+  }
+
+  .login-footer-divider {
+    height: 80px;
   }
 }
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
-import prefeituraLogo from '../assets/logo-prefeitura-amargosa.png';
+import prefeituraLogo from '../assets/logo-prefeitura-amargosa-horizontal.jpeg';
 import gtiLogo from '../assets/gti-logo.png';
 import minhaLogo from '../assets/minha-logo.png';
 import { ApiError } from '../services/api';
@@ -97,6 +97,7 @@ export function LoginPage() {
             className="login-footer-logo login-footer-logo-gti"
             src={gtiLogo}
           />
+          <span aria-hidden="true" className="login-footer-divider" />
           <img
             alt="Immanuel Vicente"
             className="login-footer-logo login-footer-logo-immanuel"
