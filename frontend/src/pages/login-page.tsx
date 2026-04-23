@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
-import prefeituraLogo from '../assets/logo-prefeitura-amargosa-horizontal.jpeg';
+import prefeituraLogo from '../assets/logo-prefeitura-amargosa-horizontal.png';
 import gtiLogo from '../assets/gti-logo.png';
 import minhaLogo from '../assets/minha-logo.png';
 import { ApiError } from '../services/api';
