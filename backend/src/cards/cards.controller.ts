@@ -28,6 +28,14 @@ export class CardsController {
     return this.cardsService.findOne(user, id);
   }
 
+  @Get('projects/:projectId/archived-cards')
+  findArchivedByProject(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.cardsService.findArchivedByProject(user, projectId);
+  }
+
   @Patch('cards/:id')
   update(
     @CurrentUser() user: AuthenticatedUser,
@@ -49,5 +57,10 @@ export class CardsController {
   @Patch('cards/:id/archive')
   archive(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.cardsService.archive(user, id);
+  }
+
+  @Patch('cards/:id/restore')
+  restore(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.cardsService.restore(user, id);
   }
 }

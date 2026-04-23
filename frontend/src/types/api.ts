@@ -56,6 +56,8 @@ export interface BoardCard {
   dueDate?: string | null;
   archived: boolean;
   position: number;
+  createdAt: string;
+  updatedAt: string;
   assignee?: ApiUser | null;
 }
 

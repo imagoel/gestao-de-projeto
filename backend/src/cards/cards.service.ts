@@ -70,18 +70,31 @@ export class CardsService {
     return card;
   }
 
+  async findArchivedByProject(user: AuthenticatedUser, projectId: string) {
+    await this.projectAccessService.ensureProjectAccess(user, projectId);
+
+    return this.prisma.card.findMany({
+      where: {
+        archived: true,
+        column: {
+          board: {
+            projectId,
+          },
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      include: this.cardInclude,
+    });
+  }
+
   async update(
     user: AuthenticatedUser,
     id: string,
     updateCardDto: UpdateCardDto,
   ) {
     const card = await this.findCardWithProject(id);
-
-    console.log("[DEBUG] Update card:", {
-      cardId: id,
-      currentCard: card,
-      updateData: updateCardDto,
-    });
 
     await this.projectAccessService.ensureProjectAccess(
       user,
@@ -110,8 +123,6 @@ export class CardsService {
       },
       include: this.cardInclude,
     });
-
-    console.log("[DEBUG] Card updated successfully:", result);
     return result;
   }
 
@@ -269,6 +280,39 @@ export class CardsService {
         );
       });
     }
+
+    return this.findOne(user, id);
+  }
+
+  async restore(user: AuthenticatedUser, id: string) {
+    const card = await this.findCardWithProject(id);
+    await this.projectAccessService.ensureProjectAccess(
+      user,
+      card.column.board.projectId,
+    );
+    await this.projectAccessService.ensureProjectWriteAccess(
+      user,
+      card.column.board.projectId,
+    );
+
+    if (!card.archived) {
+      throw new BadRequestException('Card ja esta ativo no quadro.');
+    }
+
+    const position = await this.prisma.card.count({
+      where: {
+        columnId: card.columnId,
+        archived: false,
+      },
+    });
+
+    await this.prisma.card.update({
+      where: { id },
+      data: {
+        archived: false,
+        position,
+      },
+    });
 
     return this.findOne(user, id);
   }

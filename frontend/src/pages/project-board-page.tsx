@@ -10,6 +10,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { useAuth } from "../app/auth-provider";
 import {
+  formatDateTime,
   formatPriority,
   formatShortDate,
   getDueDateTone,
@@ -20,7 +21,6 @@ import { AppShell } from "../components/app-shell";
 import { Modal } from "../components/modal";
 import { StatusState } from "../components/status-state";
 import { CardChecklistSection } from "../features/cards/card-checklist-section";
-import { CardCommentsSection } from "../features/cards/card-comments-section";
 import { ApiError, api } from "../services/api";
 import type { BoardColumn, CardPriority, ChecklistItem } from "../types/api";
 
@@ -38,8 +38,6 @@ type EditCardFormState = {
   description: string;
   dueDate: string;
   priority: CardPriority;
-  targetColumnId: string;
-  targetPosition: number;
   title: string;
 };
 
@@ -57,8 +55,6 @@ const initialEditCardForm: EditCardFormState = {
   description: "",
   dueDate: "",
   priority: "MEDIUM",
-  targetColumnId: "",
-  targetPosition: 0,
   title: "",
 };
 
@@ -81,33 +77,13 @@ type DragCardState = {
   sourcePosition: number;
 };
 
-function getPositionOptions(
-  columns: BoardColumn[],
-  targetColumnId: string,
-  currentCardId?: string,
-) {
-  const column = columns.find((item) => item.id === targetColumnId);
-
-  if (!column) {
-    return [];
-  }
-
-  const cardCount = currentCardId
-    ? column.cards.filter((card) => card.id !== currentCardId).length
-    : column.cards.length;
-
-  return Array.from({ length: cardCount + 1 }, (_, index) => ({
-    label: `${index + 1} de ${cardCount + 1}`,
-    value: index,
-  }));
-}
-
 export function ProjectBoardPage() {
   const queryClient = useQueryClient();
   const { token, user } = useAuth();
   const { projectId = "" } = useParams();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
   const [createCardForm, setCreateCardForm] = useState<CreateCardFormState>(
     initialCreateCardForm,
   );
@@ -116,7 +92,6 @@ export function ProjectBoardPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [checklistError, setChecklistError] = useState<string | null>(null);
-  const [commentError, setCommentError] = useState<string | null>(null);
   const [boardActionError, setBoardActionError] = useState<string | null>(null);
   const [dragCard, setDragCard] = useState<DragCardState | null>(null);
   const [dropTarget, setDropTarget] = useState<{
@@ -141,6 +116,12 @@ export function ProjectBoardPage() {
     enabled: Boolean(token && projectId),
   });
 
+  const archivedCardsQuery = useQuery({
+    queryKey: ["archived-cards", projectId],
+    queryFn: () => api.getArchivedCards(token!, projectId),
+    enabled: Boolean(token && projectId && isArchivedModalOpen),
+  });
+
   const cardQuery = useQuery({
     queryKey: ["card", selectedCardId],
     queryFn: () => api.getCard(token!, selectedCardId!),
@@ -150,12 +131,6 @@ export function ProjectBoardPage() {
   const checklistQuery = useQuery({
     queryKey: ["checklist", selectedCardId],
     queryFn: () => api.getChecklistItems(token!, selectedCardId!),
-    enabled: Boolean(token && selectedCardId),
-  });
-
-  const commentsQuery = useQuery({
-    queryKey: ["comments", selectedCardId],
-    queryFn: () => api.getCardComments(token!, selectedCardId!),
     enabled: Boolean(token && selectedCardId),
   });
 
@@ -205,8 +180,6 @@ export function ProjectBoardPage() {
         description: cardQuery.data.description ?? "",
         dueDate: toDateInputValue(cardQuery.data.dueDate),
         priority: cardQuery.data.priority,
-        targetColumnId: cardQuery.data.columnId,
-        targetPosition: cardQuery.data.position,
         title: cardQuery.data.title,
       });
     } else {
@@ -215,8 +188,6 @@ export function ProjectBoardPage() {
         description: cardQuery.data.description ?? "",
         dueDate: toDateInputValue(cardQuery.data.dueDate),
         priority: cardQuery.data.priority,
-        targetColumnId: cardQuery.data.columnId,
-        targetPosition: cardQuery.data.position,
         title: cardQuery.data.title,
       });
     }
@@ -249,50 +220,29 @@ export function ProjectBoardPage() {
   });
 
   const saveCardMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: () => {
       if (!selectedCardId) {
         throw new Error("Card nao selecionado.");
       }
 
-      // Debug logging
-      console.log("[DEBUG] Saving card:", {
-        cardId: selectedCardId,
-        formData: editCardForm,
-      });
-
-      const savedCard = await api.updateCard(token!, selectedCardId, {
+      return api.updateCard(token!, selectedCardId, {
         assigneeId: editCardForm.assigneeId,
         description: editCardForm.description || undefined,
         dueDate: editCardForm.dueDate || null,
         priority: editCardForm.priority,
         title: editCardForm.title,
       });
-
-      console.log("[DEBUG] Card updated:", savedCard);
-
-      const shouldMove =
-        editCardForm.targetColumnId !== savedCard.column.id ||
-        editCardForm.targetPosition !== savedCard.position;
-
-      if (!shouldMove) {
-        return savedCard;
-      }
-
-      return api.moveCard(token!, selectedCardId, {
-        targetColumnId: editCardForm.targetColumnId,
-        targetPosition: editCardForm.targetPosition,
-      });
     },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["board", projectId] }),
         queryClient.invalidateQueries({ queryKey: ["card", selectedCardId] }),
+        queryClient.invalidateQueries({ queryKey: ["archived-cards", projectId] }),
       ]);
       setSelectedCardId(null);
       setEditError(null);
     },
     onError: (error) => {
-      console.error("[DEBUG] Save card error:", error);
       setEditError(
         error instanceof ApiError
           ? error.message
@@ -353,6 +303,24 @@ export function ProjectBoardPage() {
       );
       setDragCard(null);
       setDropTarget(null);
+    },
+  });
+
+  const restoreCardMutation = useMutation({
+    mutationFn: async (cardId: string) => api.restoreCard(token!, cardId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["board", projectId] }),
+        queryClient.invalidateQueries({ queryKey: ["archived-cards", projectId] }),
+      ]);
+      setBoardActionError(null);
+    },
+    onError: (error) => {
+      setBoardActionError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel restaurar o card arquivado.",
+      );
     },
   });
 
@@ -524,29 +492,6 @@ export function ProjectBoardPage() {
     },
   });
 
-  const createCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      if (!selectedCardId) {
-        throw new Error("Card nao selecionado.");
-      }
-
-      return api.createCardComment(token!, selectedCardId, { content });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["comments", selectedCardId],
-      });
-      setCommentError(null);
-    },
-    onError: (error) => {
-      setCommentError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel publicar o comentario.",
-      );
-    },
-  });
-
   function openCreateCardModal(columnId?: string) {
     setCreateCardForm({
       ...initialCreateCardForm,
@@ -567,7 +512,6 @@ export function ProjectBoardPage() {
     setBoardActionError(null);
     setEditError(null);
     setChecklistError(null);
-    setCommentError(null);
     setSelectedCardId(cardId);
   }
 
@@ -582,12 +526,6 @@ export function ProjectBoardPage() {
     setEditError(null);
     await saveCardMutation.mutateAsync();
   }
-
-  const positionOptions = getPositionOptions(
-    columns,
-    editCardForm.targetColumnId,
-    selectedCardId ?? undefined,
-  );
   const canCreateCard =
     canEditProject && columns.length > 0 && memberOptions.length > 0;
   const currentCardColumnName = columns.find(
@@ -599,9 +537,11 @@ export function ProjectBoardPage() {
     (checklistQuery.error instanceof Error
       ? checklistQuery.error.message
       : null);
-  const commentErrorMessage =
-    commentError ??
-    (commentsQuery.error instanceof Error ? commentsQuery.error.message : null);
+  const archivedCards = archivedCardsQuery.data ?? [];
+  const archivedCardsErrorMessage =
+    archivedCardsQuery.error instanceof Error
+      ? archivedCardsQuery.error.message
+      : null;
 
   async function handleChecklistToggle(item: ChecklistItem) {
     await updateChecklistItemMutation.mutateAsync({
@@ -768,6 +708,13 @@ export function ProjectBoardPage() {
           <Link className="secondary-button" to={`/projetos/${projectId}`}>
             Ver detalhes
           </Link>
+          <button
+            className="secondary-button"
+            onClick={() => setIsArchivedModalOpen(true)}
+            type="button"
+          >
+            Arquivados
+          </button>
           {SHOW_COLUMN_MANAGEMENT && canEditProject ? (
             <button
               className="secondary-button"
@@ -1123,6 +1070,90 @@ export function ProjectBoardPage() {
       </Modal>
 
       <Modal
+        title="Cards arquivados"
+        description="Cards concluidos ou retirados do fluxo atual ficam guardados aqui para consulta e restauracao."
+        footer={
+          <button
+            className="secondary-button"
+            onClick={() => setIsArchivedModalOpen(false)}
+            type="button"
+          >
+            Fechar
+          </button>
+        }
+        onClose={() => setIsArchivedModalOpen(false)}
+        open={isArchivedModalOpen}
+      >
+        <div className="card-detail-stack">
+          {archivedCardsQuery.isLoading ? (
+            <StatusState
+              tone="loading"
+              title="Carregando arquivados"
+              copy="Estamos reunindo os cards arquivados deste projeto."
+            />
+          ) : null}
+
+          {archivedCardsErrorMessage ? (
+            <StatusState
+              tone="error"
+              title="Nao foi possivel carregar os arquivados"
+              copy={archivedCardsErrorMessage}
+            />
+          ) : null}
+
+          {!archivedCardsQuery.isLoading && !archivedCardsErrorMessage ? (
+            archivedCards.length > 0 ? (
+              <div className="archived-card-list">
+                {archivedCards.map((card) => (
+                  <article className="archived-card-item" key={card.id}>
+                    <div className="archived-card-main">
+                      <div className="badge-row">
+                        <span className={`badge ${getPriorityTone(card.priority)}`}>
+                          {formatPriority(card.priority)}
+                        </span>
+                        <span className="badge badge-gray">
+                          Coluna original: {card.column.title ?? "Sem coluna"}
+                        </span>
+                      </div>
+                      <h3 className="archived-card-title">{card.title}</h3>
+                      <div className="archived-card-meta">
+                        <span>Responsavel: {card.assignee?.name ?? "Sem responsavel"}</span>
+                        <span className={getDueDateTone(card.dueDate)}>
+                          {formatShortDate(card.dueDate)}
+                        </span>
+                        <span>Arquivado em {formatDateTime(card.updatedAt)}</span>
+                      </div>
+                    </div>
+                    <div className="archived-card-actions">
+                      <button
+                        className="secondary-button"
+                        disabled={!canEditProject || restoreCardMutation.isPending}
+                        onClick={() => void restoreCardMutation.mutateAsync(card.id)}
+                        type="button"
+                      >
+                        {restoreCardMutation.isPending ? "Restaurando..." : "Restaurar"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="task-empty">
+                Nenhum card arquivado neste projeto no momento.
+              </div>
+            )
+          ) : null}
+
+          {!canEditProject ? (
+            <p className="field-helper">
+              Seu perfil neste projeto e somente leitura. Os cards arquivados seguem
+              visiveis, mas sem restauracao.
+            </p>
+          ) : null}
+        </div>
+      </Modal>
+
+      <Modal
         description="O card pode ser criado com titulo, responsavel e prioridade. O prazo agora e opcional."
         footer={
           <>
@@ -1401,6 +1432,18 @@ export function ProjectBoardPage() {
                   rows={4}
                   value={editCardForm.description}
                 />
+                <div className="card-description-meta">
+                  <div className="comment-header">
+                    <strong>
+                      Responsavel atual:{" "}
+                      {cardQuery.data.assignee?.name ?? "Sem responsavel"}
+                    </strong>
+                    <span>{formatDateTime(cardQuery.data.updatedAt)}</span>
+                  </div>
+                  <p className="field-helper">
+                    Card criado em {formatDateTime(cardQuery.data.createdAt)}.
+                  </p>
+                </div>
               </div>
 
               <div className="form-row form-row-3">
@@ -1474,57 +1517,6 @@ export function ProjectBoardPage() {
                 </div>
               </div>
 
-              <div className="form-row">
-                <div className="field-group">
-                  <label className="field-label" htmlFor="edit-card-column">
-                    Mover para
-                  </label>
-                  <select
-                    className="field-input"
-                    disabled={!canEditProject}
-                    id="edit-card-column"
-                    onChange={(event) =>
-                      setEditCardForm((currentForm) => ({
-                        ...currentForm,
-                        targetColumnId: event.target.value,
-                        targetPosition: 0,
-                      }))
-                    }
-                    value={editCardForm.targetColumnId}
-                  >
-                    {columns.map((column) => (
-                      <option key={column.id} value={column.id}>
-                        {column.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field-group">
-                  <label className="field-label" htmlFor="edit-card-position">
-                    Posicao
-                  </label>
-                  <select
-                    className="field-input"
-                    disabled={!canEditProject}
-                    id="edit-card-position"
-                    onChange={(event) =>
-                      setEditCardForm((currentForm) => ({
-                        ...currentForm,
-                        targetPosition: Number(event.target.value),
-                      }))
-                    }
-                    value={editCardForm.targetPosition}
-                  >
-                    {positionOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
               {editError ? <p className="form-error">{editError}</p> : null}
             </form>
 
@@ -1544,15 +1536,6 @@ export function ProjectBoardPage() {
               onMove={handleChecklistMove}
               onRename={handleChecklistRename}
               onToggle={handleChecklistToggle}
-            />
-
-            <CardCommentsSection
-              comments={commentsQuery.data ?? []}
-              errorMessage={commentErrorMessage}
-              isBusy={createCommentMutation.isPending}
-              isLoading={commentsQuery.isLoading}
-              readOnly={!canEditProject}
-              onCreate={(content) => createCommentMutation.mutateAsync(content)}
             />
           </div>
         ) : null}

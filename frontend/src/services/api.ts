@@ -263,6 +263,12 @@ export const api = {
     return request<ProjectBoard>(`/projects/${projectId}/board`, { token });
   },
 
+  getArchivedCards(token: string, projectId: string) {
+    return request<CardDetail[]>(`/projects/${projectId}/archived-cards`, {
+      token,
+    });
+  },
+
   getCard(token: string, cardId: string) {
     return request<CardDetail>(`/cards/${cardId}`, { token });
   },
@@ -373,6 +379,13 @@ export const api = {
 
   archiveCard(token: string, cardId: string) {
     return request<CardDetail>(`/cards/${cardId}/archive`, {
+      method: 'PATCH',
+      token,
+    });
+  },
+
+  restoreCard(token: string, cardId: string) {
+    return request<CardDetail>(`/cards/${cardId}/restore`, {
       method: 'PATCH',
       token,
     });

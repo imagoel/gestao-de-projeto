@@ -202,7 +202,7 @@ describe('Gestao GTI API (e2e)', () => {
     ).toBe(false);
   });
 
-  it('validates card required fields and supports move + archive', async () => {
+  it('validates card required fields and supports move + archive + restore', async () => {
     const adminToken = await getAdminToken();
     const member = await createMember('card-owner@empresa.com');
 
@@ -266,6 +266,31 @@ describe('Gestao GTI API (e2e)', () => {
     );
 
     expect(activeCardIds).not.toContain(cardResponse.body.id);
+
+    const archivedResponse = await request(app.getHttpServer())
+      .get(`/api/projects/${projectResponse.body.id}/archived-cards`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(archivedResponse.body).toHaveLength(1);
+    expect(archivedResponse.body[0].id).toBe(cardResponse.body.id);
+
+    await request(app.getHttpServer())
+      .patch(`/api/cards/${cardResponse.body.id}/restore`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+
+    const boardResponseAfterRestore = await request(app.getHttpServer())
+      .get(`/api/projects/${projectResponse.body.id}/board`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    const restoredCardIds = boardResponseAfterRestore.body.columns.flatMap(
+      (column: { cards: Array<{ id: string }> }) => column.cards.map((card) => card.id),
+    );
+
+    expect(restoredCardIds).toContain(cardResponse.body.id);
   });
 
   it('supports checklist and comments for project members', async () => {

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type DragEvent } from "react";
 
-import type { ChecklistItem } from '../../types/api';
+import type { ChecklistItem } from "../../types/api";
 
 type CardChecklistSectionProps = {
   items: ChecklistItem[];
@@ -25,11 +25,16 @@ export function CardChecklistSection({
   onToggle,
   onRename,
 }: CardChecklistSectionProps) {
-  const [draftTitle, setDraftTitle] = useState('');
+  const [draftTitle, setDraftTitle] = useState("");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState('');
+  const [editingTitle, setEditingTitle] = useState("");
+  const [dragItemId, setDragItemId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<number | null>(null);
 
-  const completedCount = useMemo(() => items.filter((item) => item.done).length, [items]);
+  const completedCount = useMemo(
+    () => items.filter((item) => item.done).length,
+    [items],
+  );
 
   async function handleCreate() {
     const nextTitle = draftTitle.trim();
@@ -39,7 +44,81 @@ export function CardChecklistSection({
     }
 
     await onCreate(nextTitle);
-    setDraftTitle('');
+    setDraftTitle("");
+  }
+
+  function getDropPositionFromPointer(event: DragEvent<HTMLDivElement>) {
+    const currentTarget = event.currentTarget;
+    const visibleItems = items.filter((item) => item.id !== dragItemId);
+    const itemElements = Array.from(
+      currentTarget.querySelectorAll<HTMLElement>("[data-checklist-item-id]"),
+    ).filter((element) => element.dataset.checklistItemId !== dragItemId);
+
+    if (visibleItems.length === 0 || itemElements.length === 0) {
+      return 0;
+    }
+
+    const targetIndex = itemElements.findIndex((element) => {
+      const bounds = element.getBoundingClientRect();
+      return event.clientY < bounds.top + bounds.height / 2;
+    });
+
+    return targetIndex === -1 ? visibleItems.length : targetIndex;
+  }
+
+  function handleDragStart(itemId: string) {
+    if (isBusy || readOnly) {
+      return;
+    }
+
+    setDragItemId(itemId);
+    setDropPosition(null);
+  }
+
+  function handleDragEnd() {
+    setDragItemId(null);
+    setDropPosition(null);
+  }
+
+  function handleListDragOver(event: DragEvent<HTMLDivElement>) {
+    if (!dragItemId || isBusy || readOnly) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextPosition = getDropPositionFromPointer(event);
+
+    if (dropPosition !== nextPosition) {
+      setDropPosition(nextPosition);
+    }
+  }
+
+  async function handleListDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+
+    if (!dragItemId || isBusy || readOnly) {
+      return;
+    }
+
+    const draggedItem = items.find((item) => item.id === dragItemId);
+
+    if (!draggedItem) {
+      handleDragEnd();
+      return;
+    }
+
+    const targetPosition = getDropPositionFromPointer(event);
+
+    if (targetPosition === draggedItem.position) {
+      handleDragEnd();
+      return;
+    }
+
+    try {
+      await onMove(draggedItem, targetPosition);
+    } finally {
+      handleDragEnd();
+    }
   }
 
   return (
@@ -53,12 +132,40 @@ export function CardChecklistSection({
       {isLoading ? <p className="field-helper">Carregando checklist...</p> : null}
       {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
 
-      <div className="checklist-list">
+      <div
+        className={
+          dragItemId ? "checklist-list checklist-list-dragging" : "checklist-list"
+        }
+        onDragOver={handleListDragOver}
+        onDrop={(event) => void handleListDrop(event)}
+      >
         {items.map((item) => {
           const isEditing = editingItemId === item.id;
+          const visibleIndex = items
+            .filter((candidate) => candidate.id !== dragItemId)
+            .findIndex((candidate) => candidate.id === item.id);
+          const checklistItemClassName = [
+            "checklist-item",
+            dragItemId === item.id ? "checklist-item-dragging" : "",
+            visibleIndex !== -1 && dropPosition === visibleIndex
+              ? "checklist-item-drop-before"
+              : "",
+            visibleIndex !== -1 && dropPosition === visibleIndex + 1
+              ? "checklist-item-drop-after"
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
 
           return (
-            <div className="checklist-item" key={item.id}>
+            <div
+              className={checklistItemClassName}
+              data-checklist-item-id={item.id}
+              draggable={!isBusy && !readOnly && !isEditing}
+              key={item.id}
+              onDragEnd={handleDragEnd}
+              onDragStart={() => handleDragStart(item.id)}
+            >
               <label className="checklist-main">
                 <input
                   checked={item.done}
@@ -73,7 +180,13 @@ export function CardChecklistSection({
                     value={editingTitle}
                   />
                 ) : (
-                  <span className={item.done ? 'checklist-title checklist-title-done' : 'checklist-title'}>
+                  <span
+                    className={
+                      item.done
+                        ? "checklist-title checklist-title-done"
+                        : "checklist-title"
+                    }
+                  >
                     {item.title}
                   </span>
                 )}
@@ -87,7 +200,7 @@ export function CardChecklistSection({
                       disabled={isBusy || readOnly}
                       onClick={() => {
                         setEditingItemId(null);
-                        setEditingTitle('');
+                        setEditingTitle("");
                       }}
                       type="button"
                     >
@@ -99,7 +212,7 @@ export function CardChecklistSection({
                       onClick={() =>
                         void onRename(item, editingTitle.trim()).then(() => {
                           setEditingItemId(null);
-                          setEditingTitle('');
+                          setEditingTitle("");
                         })
                       }
                       type="button"
@@ -109,22 +222,9 @@ export function CardChecklistSection({
                   </>
                 ) : (
                   <>
-                    <button
-                      className="text-button"
-                      disabled={isBusy || readOnly || item.position === 0}
-                      onClick={() => void onMove(item, item.position - 1)}
-                      type="button"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      className="text-button"
-                      disabled={isBusy || readOnly || item.position === items.length - 1}
-                      onClick={() => void onMove(item, item.position + 1)}
-                      type="button"
-                    >
-                      ↓
-                    </button>
+                    {!readOnly ? (
+                      <span className="checklist-drag-hint">Arrastar</span>
+                    ) : null}
                     <button
                       className="text-button"
                       disabled={isBusy || readOnly}
@@ -144,13 +244,16 @@ export function CardChecklistSection({
         })}
 
         {!isLoading && items.length === 0 ? (
-          <div className="task-empty">Nenhum item ainda. Adicione os primeiros passos deste card.</div>
+          <div className="task-empty">
+            Nenhum item ainda. Adicione os primeiros passos deste card.
+          </div>
         ) : null}
       </div>
 
       {readOnly ? (
         <p className="field-helper">
-          Seu perfil neste projeto e somente leitura. O checklist permanece visivel, mas nao pode ser alterado.
+          Seu perfil neste projeto e somente leitura. O checklist permanece
+          visivel, mas nao pode ser alterado.
         </p>
       ) : null}
 
