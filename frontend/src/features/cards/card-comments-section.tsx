@@ -8,7 +8,14 @@ type CardCommentsSectionProps = {
   isBusy: boolean;
   isLoading: boolean;
   errorMessage?: string | null;
+  emptyStateCopy?: string;
+  fieldLabel?: string;
+  inputId?: string;
+  placeholder?: string;
   readOnly?: boolean;
+  readOnlyCopy?: string;
+  submitLabel?: string;
+  title?: string;
   onCreate: (content: string) => Promise<unknown>;
 };
 
@@ -17,7 +24,14 @@ export function CardCommentsSection({
   isBusy,
   isLoading,
   errorMessage,
+  emptyStateCopy = 'Nenhum comentario ainda. Registre contexto e combinados do card aqui.',
+  fieldLabel = 'Novo comentario',
+  inputId = 'new-comment',
+  placeholder = 'Escreva um comentario...',
   readOnly = false,
+  readOnlyCopy = 'Seu perfil neste projeto e somente leitura. Os comentarios seguem visiveis, mas sem nova publicacao.',
+  submitLabel = 'Comentar',
+  title = 'Comentarios',
   onCreate,
 }: CardCommentsSectionProps) {
   const [draftComment, setDraftComment] = useState('');
@@ -36,10 +50,10 @@ export function CardCommentsSection({
   return (
     <section className="card-section">
       <div className="card-section-header">
-        <h3 className="card-section-title">Comentarios</h3>
+        <h3 className="card-section-title">{title}</h3>
       </div>
 
-      {isLoading ? <p className="field-helper">Carregando comentarios...</p> : null}
+      {isLoading ? <p className="field-helper">Carregando {title.toLowerCase()}...</p> : null}
       {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
 
       <div className="comment-list">
@@ -54,26 +68,22 @@ export function CardCommentsSection({
         ))}
 
         {!isLoading && comments.length === 0 ? (
-          <div className="task-empty">Nenhum comentario ainda. Registre contexto e combinados do card aqui.</div>
+          <div className="task-empty">{emptyStateCopy}</div>
         ) : null}
       </div>
 
-      {readOnly ? (
-        <p className="field-helper">
-          Seu perfil neste projeto e somente leitura. Os comentarios seguem visiveis, mas sem nova publicacao.
-        </p>
-      ) : null}
+      {readOnly ? <p className="field-helper">{readOnlyCopy}</p> : null}
 
       <div className="field-group">
-        <label className="field-label" htmlFor="new-comment">
-          Novo comentario
+        <label className="field-label" htmlFor={inputId}>
+          {fieldLabel}
         </label>
         <textarea
           className="field-input field-textarea comment-textarea"
           disabled={isBusy || readOnly}
-          id="new-comment"
+          id={inputId}
           onChange={(event) => setDraftComment(event.target.value)}
-          placeholder="Escreva um comentario..."
+          placeholder={placeholder}
           rows={3}
           value={draftComment}
         />
@@ -84,7 +94,7 @@ export function CardCommentsSection({
             onClick={() => void handleCreate()}
             type="button"
           >
-            Comentar
+            {submitLabel}
           </button>
         </div>
       </div>

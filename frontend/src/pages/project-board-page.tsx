@@ -21,13 +21,13 @@ import { AppShell } from "../components/app-shell";
 import { Modal } from "../components/modal";
 import { StatusState } from "../components/status-state";
 import { CardChecklistSection } from "../features/cards/card-checklist-section";
+import { CardCommentsSection } from "../features/cards/card-comments-section";
 import { ApiError, api } from "../services/api";
 import type { BoardColumn, CardPriority, ChecklistItem } from "../types/api";
 
 type CreateCardFormState = {
   assigneeId: string;
   columnId: string;
-  description: string;
   dueDate: string;
   priority: CardPriority;
   title: string;
@@ -35,7 +35,6 @@ type CreateCardFormState = {
 
 type EditCardFormState = {
   assigneeId: string;
-  description: string;
   dueDate: string;
   priority: CardPriority;
   title: string;
@@ -44,7 +43,6 @@ type EditCardFormState = {
 const initialCreateCardForm: CreateCardFormState = {
   assigneeId: "",
   columnId: "",
-  description: "",
   dueDate: "",
   priority: "MEDIUM",
   title: "",
@@ -52,7 +50,6 @@ const initialCreateCardForm: CreateCardFormState = {
 
 const initialEditCardForm: EditCardFormState = {
   assigneeId: "",
-  description: "",
   dueDate: "",
   priority: "MEDIUM",
   title: "",
@@ -92,6 +89,7 @@ export function ProjectBoardPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [checklistError, setChecklistError] = useState<string | null>(null);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [boardActionError, setBoardActionError] = useState<string | null>(null);
   const [dragCard, setDragCard] = useState<DragCardState | null>(null);
   const [dropTarget, setDropTarget] = useState<{
@@ -131,6 +129,12 @@ export function ProjectBoardPage() {
   const checklistQuery = useQuery({
     queryKey: ["checklist", selectedCardId],
     queryFn: () => api.getChecklistItems(token!, selectedCardId!),
+    enabled: Boolean(token && selectedCardId),
+  });
+
+  const commentsQuery = useQuery({
+    queryKey: ["card-comments", selectedCardId],
+    queryFn: () => api.getCardComments(token!, selectedCardId!),
     enabled: Boolean(token && selectedCardId),
   });
 
@@ -177,7 +181,6 @@ export function ProjectBoardPage() {
       // Card has no assignee and no members available - keep it empty but valid
       setEditCardForm({
         assigneeId: "",
-        description: cardQuery.data.description ?? "",
         dueDate: toDateInputValue(cardQuery.data.dueDate),
         priority: cardQuery.data.priority,
         title: cardQuery.data.title,
@@ -185,7 +188,6 @@ export function ProjectBoardPage() {
     } else {
       setEditCardForm({
         assigneeId,
-        description: cardQuery.data.description ?? "",
         dueDate: toDateInputValue(cardQuery.data.dueDate),
         priority: cardQuery.data.priority,
         title: cardQuery.data.title,
@@ -199,7 +201,6 @@ export function ProjectBoardPage() {
     mutationFn: () =>
       api.createCard(token!, createCardForm.columnId, {
         assigneeId: createCardForm.assigneeId,
-        description: createCardForm.description || undefined,
         dueDate: createCardForm.dueDate || null,
         priority: createCardForm.priority,
         title: createCardForm.title,
@@ -227,7 +228,6 @@ export function ProjectBoardPage() {
 
       return api.updateCard(token!, selectedCardId, {
         assigneeId: editCardForm.assigneeId,
-        description: editCardForm.description || undefined,
         dueDate: editCardForm.dueDate || null,
         priority: editCardForm.priority,
         title: editCardForm.title,
@@ -247,6 +247,29 @@ export function ProjectBoardPage() {
         error instanceof ApiError
           ? error.message
           : "Nao foi possivel salvar o card.",
+      );
+    },
+  });
+
+  const createCardDescriptionMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!selectedCardId) {
+        throw new Error("Card nao selecionado.");
+      }
+
+      return api.createCardComment(token!, selectedCardId, { content });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["card-comments", selectedCardId],
+      });
+      setDescriptionError(null);
+    },
+    onError: (error) => {
+      setDescriptionError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel registrar a descricao do card.",
       );
     },
   });
@@ -512,6 +535,7 @@ export function ProjectBoardPage() {
     setBoardActionError(null);
     setEditError(null);
     setChecklistError(null);
+    setDescriptionError(null);
     setSelectedCardId(cardId);
   }
 
@@ -536,6 +560,12 @@ export function ProjectBoardPage() {
     checklistError ??
     (checklistQuery.error instanceof Error
       ? checklistQuery.error.message
+      : null);
+  const cardDescriptions = commentsQuery.data ?? [];
+  const cardDescriptionErrorMessage =
+    descriptionError ??
+    (commentsQuery.error instanceof Error
+      ? commentsQuery.error.message
       : null);
   const archivedCards = archivedCardsQuery.data ?? [];
   const archivedCardsErrorMessage =
@@ -1203,24 +1233,6 @@ export function ProjectBoardPage() {
             />
           </div>
 
-          <div className="field-group">
-            <label className="field-label" htmlFor="create-card-description">
-              Descricao
-            </label>
-            <textarea
-              className="field-input field-textarea"
-              id="create-card-description"
-              onChange={(event) =>
-                setCreateCardForm((currentForm) => ({
-                  ...currentForm,
-                  description: event.target.value,
-                }))
-              }
-              rows={4}
-              value={createCardForm.description}
-            />
-          </div>
-
           <div className="form-row form-row-3">
             <div className="field-group">
               <label className="field-label" htmlFor="create-card-column">
@@ -1415,36 +1427,23 @@ export function ProjectBoardPage() {
                 />
               </div>
 
-              <div className="field-group">
-                <label className="field-label" htmlFor="edit-card-description">
-                  Descricao
-                </label>
-                <textarea
-                  className="field-input field-textarea"
-                  disabled={!canEditProject}
-                  id="edit-card-description"
-                  onChange={(event) =>
-                    setEditCardForm((currentForm) => ({
-                      ...currentForm,
-                      description: event.target.value,
-                    }))
-                  }
-                  rows={4}
-                  value={editCardForm.description}
-                />
-                <div className="card-description-meta">
-                  <div className="comment-header">
-                    <strong>
-                      Responsavel atual:{" "}
-                      {cardQuery.data.assignee?.name ?? "Sem responsavel"}
-                    </strong>
-                    <span>{formatDateTime(cardQuery.data.updatedAt)}</span>
-                  </div>
-                  <p className="field-helper">
-                    Card criado em {formatDateTime(cardQuery.data.createdAt)}.
-                  </p>
-                </div>
-              </div>
+              <CardCommentsSection
+                comments={cardDescriptions}
+                emptyStateCopy="Nenhuma descricao registrada ainda. Use esta area para contexto, andamento e observacoes do card."
+                errorMessage={cardDescriptionErrorMessage}
+                fieldLabel="Adicionar descricao"
+                inputId="card-description-history"
+                isBusy={createCardDescriptionMutation.isPending}
+                isLoading={commentsQuery.isLoading}
+                placeholder="Escreva uma descricao, observacao ou atualizacao..."
+                readOnly={!canEditProject}
+                readOnlyCopy="Seu perfil neste projeto e somente leitura. As descricoes seguem visiveis, mas sem novos registros."
+                submitLabel="Registrar"
+                title="Descricao"
+                onCreate={(content) =>
+                  createCardDescriptionMutation.mutateAsync(content)
+                }
+              />
 
               <div className="form-row form-row-3">
                 <div className="field-group">
