@@ -467,6 +467,19 @@ textarea {
   align-content: start;
 }
 
+.board-column-body {
+  display: grid;
+  gap: 12px;
+  min-height: 120px;
+  padding: 4px 0;
+  border-radius: 16px;
+  transition: background-color 0.2s ease;
+}
+
+.board-column-body-active {
+  background: rgba(24, 95, 165, 0.05);
+}
+
 .board-inline-note,
 .board-inline-error {
   margin-bottom: 16px;

@@ -213,9 +213,9 @@ export function ProjectsPage() {
               </span>
             </div>
             <h2 className="project-card-title">{project.name}</h2>
-            <p className="project-card-copy">
-              {project.description || 'Projeto sem descricao cadastrada.'}
-            </p>
+            {project.description ? (
+              <p className="project-card-copy">{project.description}</p>
+            ) : null}
           </div>
           <div className="project-meta">
             <span>{project.owner.name}</span>

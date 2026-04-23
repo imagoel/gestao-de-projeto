@@ -1,5 +1,4 @@
 import {
-  Fragment,
   useEffect,
   useMemo,
   useState,
@@ -163,12 +162,19 @@ export function ProjectBoardPage() {
   const memberOptions =
     projectQuery.data?.members.map((member) => member.user) ?? [];
   const columns = useMemo(() => {
-    const raw = boardQuery.data?.columns ?? [];
-    return raw.map((col) => ({
-      ...col,
-      cards: [...col.cards].sort(
-        (a, b) => PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority],
-      ),
+    const rawColumns = boardQuery.data?.columns ?? [];
+    return rawColumns.map((column) => ({
+      ...column,
+      cards: [...column.cards].sort((firstCard, secondCard) => {
+        const priorityDifference =
+          PRIORITY_WEIGHT[firstCard.priority] - PRIORITY_WEIGHT[secondCard.priority];
+
+        if (priorityDifference !== 0) {
+          return priorityDifference;
+        }
+
+        return firstCard.position - secondCard.position;
+      }),
     }));
   }, [boardQuery.data?.columns]);
   const currentProjectMember = projectQuery.data?.members.find(
@@ -663,6 +669,44 @@ export function ProjectBoardPage() {
     }
   }
 
+  function getDropPositionFromPointer(
+    event: DragEvent<HTMLElement>,
+    column: BoardColumn,
+  ) {
+    const currentTarget = event.currentTarget;
+    const visibleCards = column.cards.filter((card) => card.id !== dragCard?.cardId);
+    const cardElements = Array.from(
+      currentTarget.querySelectorAll<HTMLElement>("[data-board-card-id]"),
+    ).filter((element) => element.dataset.boardCardId !== dragCard?.cardId);
+
+    if (visibleCards.length === 0 || cardElements.length === 0) {
+      return 0;
+    }
+
+    const targetIndex = cardElements.findIndex((element) => {
+      const bounds = element.getBoundingClientRect();
+      return event.clientY < bounds.top + bounds.height / 2;
+    });
+
+    return targetIndex === -1 ? visibleCards.length : targetIndex;
+  }
+
+  function handleColumnDragOver(event: DragEvent<HTMLDivElement>, column: BoardColumn) {
+    if (!dragCard || !canEditProject || dragMoveCardMutation.isPending) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const nextPosition = getDropPositionFromPointer(event, column);
+    if (
+      dropTarget?.columnId !== column.id ||
+      dropTarget.position !== nextPosition
+    ) {
+      setDropTarget({ columnId: column.id, position: nextPosition });
+    }
+  }
+
   async function handleDrop(
     event: DragEvent<HTMLElement>,
     columnId: string,
@@ -690,10 +734,28 @@ export function ProjectBoardPage() {
     });
   }
 
+  async function handleColumnDrop(
+    event: DragEvent<HTMLDivElement>,
+    column: BoardColumn,
+  ) {
+    if (!dragCard || dragMoveCardMutation.isPending) {
+      return;
+    }
+
+    const nextPosition = getDropPositionFromPointer(event, column);
+    await handleDrop(event, column.id, nextPosition);
+  }
+
   function getDropZoneClassName(columnId: string, position: number) {
     return dropTarget?.columnId === columnId && dropTarget.position === position
       ? "board-drop-zone board-drop-zone-active"
       : "board-drop-zone";
+  }
+
+  function getColumnBodyClassName(columnId: string) {
+    return dropTarget?.columnId === columnId
+      ? "board-column-body board-column-body-active"
+      : "board-column-body";
   }
 
   return (
@@ -902,105 +964,104 @@ export function ProjectBoardPage() {
                   </div>
                 </div>
 
-                {column.cards.length > 0 ? (
-                  <>
-                    <div
-                      className={getDropZoneClassName(column.id, 0)}
-                      onDragOver={(event) =>
-                        handleDropTargetDragOver(event, column.id, 0)
-                      }
-                      onDrop={(event) => void handleDrop(event, column.id, 0)}
-                    />
-                    {column.cards.map((card, index) => (
-                      <Fragment key={card.id}>
-                        <button
-                          className={
-                            dragCard?.cardId === card.id
-                              ? "task-card task-card-button task-card-dragging"
-                              : "task-card task-card-button"
-                          }
-                          draggable={canEditProject}
-                          onClick={() => openCardDetails(card.id)}
-                          onDragEnd={handleDragEnd}
-                          onDragStart={() =>
-                            handleDragStart(card.id, column.id, index)
-                          }
-                          type="button"
-                        >
-                          <div className="badge-row">
-                            <span
-                              className={`badge ${getPriorityTone(card.priority)}`}
-                            >
-                              {formatPriority(card.priority)}
-                            </span>
-                            {canEditProject ? (
+                <div
+                  className={getColumnBodyClassName(column.id)}
+                  onDragOver={(event) => handleColumnDragOver(event, column)}
+                  onDrop={(event) => void handleColumnDrop(event, column)}
+                >
+                  {column.cards.length > 0 ? (
+                    <>
+                      <div
+                        className={getDropZoneClassName(column.id, 0)}
+                        onDragOver={(event) =>
+                          handleDropTargetDragOver(event, column.id, 0)
+                        }
+                        onDrop={(event) => void handleDrop(event, column.id, 0)}
+                      />
+                      {column.cards.map((card, index) => (
+                        <div key={card.id}>
+                          <button
+                            className={
+                              dragCard?.cardId === card.id
+                                ? "task-card task-card-button task-card-dragging"
+                                : "task-card task-card-button"
+                            }
+                            data-board-card-id={card.id}
+                            draggable={canEditProject}
+                            onClick={() => openCardDetails(card.id)}
+                            onDragEnd={handleDragEnd}
+                            onDragStart={() =>
+                              handleDragStart(card.id, column.id, index)
+                            }
+                            type="button"
+                          >
+                            <div className="badge-row">
                               <span
-                                aria-label="Renomear card"
-                                className="task-card-rename"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  const next = window.prompt(
-                                    "Novo nome do card:",
-                                    card.title,
-                                  );
-                                  const trimmed = next?.trim();
-                                  if (!trimmed || trimmed === card.title) return;
-                                  void renameCardMutation.mutateAsync({
-                                    cardId: card.id,
-                                    title: trimmed,
-                                    assigneeId: card.assignee?.id ?? "",
-                                    priority: card.priority,
-                                    description: card.description,
-                                    dueDate: card.dueDate,
-                                  });
-                                }}
-                                role="button"
-                                title="Renomear card"
+                                className={`badge ${getPriorityTone(card.priority)}`}
                               >
-                                ✎
+                                {formatPriority(card.priority)}
                               </span>
-                            ) : null}
-                          </div>
-                          <h2 className="task-card-title">{card.title}</h2>
-                          <div className="task-card-meta">
-                            <span>
-                              {card.assignee?.name ?? "Sem responsavel"}
-                            </span>
-                            <span className={getDueDateTone(card.dueDate)}>
-                              {formatShortDate(card.dueDate)}
-                            </span>
-                          </div>
-                        </button>
-                        <div
-                          className={getDropZoneClassName(column.id, index + 1)}
-                          onDragOver={(event) =>
-                            handleDropTargetDragOver(
-                              event,
-                              column.id,
-                              index + 1,
-                            )
-                          }
-                          onDrop={(event) =>
-                            void handleDrop(event, column.id, index + 1)
-                          }
-                        />
-                      </Fragment>
-                    ))}
-                  </>
-                ) : (
-                  <div
-                    className={getDropZoneClassName(column.id, 0)}
-                    onDragOver={(event) =>
-                      handleDropTargetDragOver(event, column.id, 0)
-                    }
-                    onDrop={(event) => void handleDrop(event, column.id, 0)}
-                  >
+                              {canEditProject ? (
+                                <span
+                                  aria-label="Renomear card"
+                                  className="task-card-rename"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    const next = window.prompt(
+                                      "Novo nome do card:",
+                                      card.title,
+                                    );
+                                    const trimmed = next?.trim();
+                                    if (!trimmed || trimmed === card.title) return;
+                                    void renameCardMutation.mutateAsync({
+                                      cardId: card.id,
+                                      title: trimmed,
+                                      assigneeId: card.assignee?.id ?? "",
+                                      priority: card.priority,
+                                      description: card.description,
+                                      dueDate: card.dueDate,
+                                    });
+                                  }}
+                                  role="button"
+                                  title="Renomear card"
+                                >
+                                  ✎
+                                </span>
+                              ) : null}
+                            </div>
+                            <h2 className="task-card-title">{card.title}</h2>
+                            <div className="task-card-meta">
+                              <span>
+                                {card.assignee?.name ?? "Sem responsavel"}
+                              </span>
+                              <span className={getDueDateTone(card.dueDate)}>
+                                {formatShortDate(card.dueDate)}
+                              </span>
+                            </div>
+                          </button>
+                          <div
+                            className={getDropZoneClassName(column.id, index + 1)}
+                            onDragOver={(event) =>
+                              handleDropTargetDragOver(
+                                event,
+                                column.id,
+                                index + 1,
+                              )
+                            }
+                            onDrop={(event) =>
+                              void handleDrop(event, column.id, index + 1)
+                            }
+                          />
+                        </div>
+                      ))}
+                    </>
+                  ) : (
                     <div className="task-empty">
                       Nenhum card nesta coluna ainda. Use o botao acima para
                       cadastrar o primeiro.
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </article>
             ))}
           </section>
@@ -1227,7 +1288,6 @@ export function ProjectBoardPage() {
       </Modal>
 
       <Modal
-        description="Detalhe completo do card com dados centrais, checklist e comentarios do MVP."
         footer={
           <>
             <button
