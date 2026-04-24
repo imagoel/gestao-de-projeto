@@ -709,7 +709,7 @@ textarea {
 
 .login-logo {
   display: block;
-  width: min(100%, 320px);
+  width: min(100%, 292px);
   height: auto;
   object-fit: contain;
 }
@@ -798,12 +798,12 @@ textarea {
 }
 
 .login-footer-logo-immanuel {
-  height: 108px;
+  height: 134px;
 }
 
 .login-footer-divider {
   width: 1px;
-  height: 112px;
+  height: 138px;
   background: #cfc8bb;
 }
 
@@ -818,7 +818,7 @@ textarea {
   }
 
   .login-logo {
-    width: min(100%, 280px);
+    width: min(100%, 258px);
   }
 
   .login-footer {
@@ -834,11 +834,11 @@ textarea {
   }
 
   .login-footer-logo-immanuel {
-    height: 84px;
+    height: 102px;
   }
 
   .login-footer-divider {
-    height: 94px;
+    height: 108px;
   }
 }
 
@@ -849,7 +849,7 @@ textarea {
   }
 
   .login-logo {
-    width: min(100%, 240px);
+    width: min(100%, 225px);
   }
 
   .login-footer-logos {
@@ -861,11 +861,11 @@ textarea {
   }
 
   .login-footer-logo-immanuel {
-    height: 70px;
+    height: 84px;
   }
 
   .login-footer-divider {
-    height: 80px;
+    height: 92px;
   }
 }
 
