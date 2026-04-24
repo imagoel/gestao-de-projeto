@@ -240,6 +240,10 @@ textarea {
   color: #134d86;
 }
 
+.text-button-danger {
+  color: #9e243d;
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -798,7 +802,7 @@ textarea {
 }
 
 .login-footer-logo-immanuel {
-  height: 134px;
+  height: 152px;
 }
 
 .login-footer-divider {
@@ -834,7 +838,7 @@ textarea {
   }
 
   .login-footer-logo-immanuel {
-    height: 102px;
+    height: 116px;
   }
 
   .login-footer-divider {
@@ -861,7 +865,7 @@ textarea {
   }
 
   .login-footer-logo-immanuel {
-    height: 84px;
+    height: 94px;
   }
 
   .login-footer-divider {

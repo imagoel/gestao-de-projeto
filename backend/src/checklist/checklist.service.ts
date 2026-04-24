@@ -149,6 +149,50 @@ export class ChecklistService {
     });
   }
 
+  async remove(user: AuthenticatedUser, id: string) {
+    const checklistItem = await this.findChecklistItemContext(id);
+    await this.projectAccessService.ensureProjectAccess(
+      user,
+      checklistItem.card.column.board.projectId,
+    );
+    await this.projectAccessService.ensureProjectWriteAccess(
+      user,
+      checklistItem.card.column.board.projectId,
+    );
+    this.ensureCardIsActive(checklistItem.card.archived);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.checklistItem.delete({
+        where: { id },
+      });
+
+      const remainingItemIds = (
+        await tx.checklistItem.findMany({
+          where: {
+            cardId: checklistItem.cardId,
+          },
+          orderBy: {
+            position: 'asc',
+          },
+          select: {
+            id: true,
+          },
+        })
+      ).map((item) => item.id);
+
+      await Promise.all(
+        remainingItemIds.map((itemId, position) =>
+          tx.checklistItem.update({
+            where: { id: itemId },
+            data: { position },
+          }),
+        ),
+      );
+    });
+
+    return { success: true };
+  }
+
   private ensureCardIsActive(archived: boolean) {
     if (archived) {
       throw new BadRequestException('Cards arquivados nao podem alterar checklist.');

@@ -515,6 +515,23 @@ export function ProjectBoardPage() {
     },
   });
 
+  const deleteChecklistItemMutation = useMutation({
+    mutationFn: async (itemId: string) => api.deleteChecklistItem(token!, itemId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["checklist", selectedCardId],
+      });
+      setChecklistError(null);
+    },
+    onError: (error) => {
+      setChecklistError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel excluir o item do checklist.",
+      );
+    },
+  });
+
   function openCreateCardModal(columnId?: string) {
     setCreateCardForm({
       ...initialCreateCardForm,
@@ -595,6 +612,10 @@ export function ProjectBoardPage() {
       itemId: item.id,
       targetPosition,
     });
+  }
+
+  async function handleChecklistDelete(item: ChecklistItem) {
+    await deleteChecklistItemMutation.mutateAsync(item.id);
   }
 
   function handleDragStart(
@@ -1519,23 +1540,25 @@ export function ProjectBoardPage() {
               {editError ? <p className="form-error">{editError}</p> : null}
             </form>
 
-            <CardChecklistSection
-              errorMessage={checklistErrorMessage}
-              isBusy={
-                createChecklistItemMutation.isPending ||
-                updateChecklistItemMutation.isPending ||
-                reorderChecklistItemMutation.isPending
-              }
-              isLoading={checklistQuery.isLoading}
-              items={checklistItems}
-              readOnly={!canEditProject}
-              onCreate={(title) =>
-                createChecklistItemMutation.mutateAsync(title)
-              }
-              onMove={handleChecklistMove}
-              onRename={handleChecklistRename}
-              onToggle={handleChecklistToggle}
-            />
+              <CardChecklistSection
+                errorMessage={checklistErrorMessage}
+                isBusy={
+                  createChecklistItemMutation.isPending ||
+                  updateChecklistItemMutation.isPending ||
+                  reorderChecklistItemMutation.isPending ||
+                  deleteChecklistItemMutation.isPending
+                }
+                isLoading={checklistQuery.isLoading}
+                items={checklistItems}
+                readOnly={!canEditProject}
+                onCreate={(title) =>
+                  createChecklistItemMutation.mutateAsync(title)
+                }
+                onDelete={handleChecklistDelete}
+                onMove={handleChecklistMove}
+                onRename={handleChecklistRename}
+                onToggle={handleChecklistToggle}
+              />
           </div>
         ) : null}
       </Modal>

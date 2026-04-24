@@ -314,6 +314,13 @@ export const api = {
     });
   },
 
+  deleteChecklistItem(token: string, itemId: string) {
+    return request<{ success: true }>(`/checklist-items/${itemId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
   getCardComments(token: string, cardId: string) {
     return request<CardComment[]>(`/cards/${cardId}/comments`, { token });
   },

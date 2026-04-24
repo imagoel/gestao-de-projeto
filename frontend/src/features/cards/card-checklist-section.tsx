@@ -9,6 +9,7 @@ type CardChecklistSectionProps = {
   errorMessage?: string | null;
   readOnly?: boolean;
   onCreate: (title: string) => Promise<unknown>;
+  onDelete: (item: ChecklistItem) => Promise<unknown>;
   onMove: (item: ChecklistItem, targetPosition: number) => Promise<unknown>;
   onToggle: (item: ChecklistItem) => Promise<unknown>;
   onRename: (item: ChecklistItem, title: string) => Promise<unknown>;
@@ -21,6 +22,7 @@ export function CardChecklistSection({
   errorMessage,
   readOnly = false,
   onCreate,
+  onDelete,
   onMove,
   onToggle,
   onRename,
@@ -225,6 +227,24 @@ export function CardChecklistSection({
                     {!readOnly ? (
                       <span className="checklist-drag-hint">Arrastar</span>
                     ) : null}
+                    <button
+                      className="text-button text-button-danger"
+                      disabled={isBusy || readOnly}
+                      onClick={() => {
+                        const shouldDelete = window.confirm(
+                          `Excluir o item "${item.title}" do checklist?`,
+                        );
+
+                        if (!shouldDelete) {
+                          return;
+                        }
+
+                        void onDelete(item);
+                      }}
+                      type="button"
+                    >
+                      Excluir
+                    </button>
                     <button
                       className="text-button"
                       disabled={isBusy || readOnly}

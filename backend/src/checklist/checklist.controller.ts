@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -44,5 +44,10 @@ export class ChecklistController {
     @Body() reorderChecklistItemDto: ReorderChecklistItemDto,
   ) {
     return this.checklistService.reorder(user, id, reorderChecklistItemDto);
+  }
+
+  @Delete('checklist-items/:id')
+  remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.checklistService.remove(user, id);
   }
 }

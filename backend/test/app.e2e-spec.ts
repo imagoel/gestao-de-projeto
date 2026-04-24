@@ -413,6 +413,20 @@ describe('Gestao GTI API (e2e)', () => {
     expect(checklistResponse.body[1].id).toBe(firstChecklistItem.body.id);
 
     await request(app.getHttpServer())
+      .delete(`/api/checklist-items/${secondChecklistItem.body.id}`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200, { success: true });
+
+    const checklistAfterDeleteResponse = await request(app.getHttpServer())
+      .get(`/api/cards/${cardResponse.body.id}/checklist-items`)
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+
+    expect(checklistAfterDeleteResponse.body).toHaveLength(1);
+    expect(checklistAfterDeleteResponse.body[0].id).toBe(firstChecklistItem.body.id);
+    expect(checklistAfterDeleteResponse.body[0].position).toBe(0);
+
+    await request(app.getHttpServer())
       .post(`/api/cards/${cardResponse.body.id}/comments`)
       .set('Authorization', `Bearer ${memberToken}`)
       .send({
