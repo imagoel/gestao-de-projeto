@@ -68,6 +68,43 @@ const PRIORITY_WEIGHT: Record<CardPriority, number> = {
   LOW: 3,
 };
 
+function getInitials(name?: string | null) {
+  if (!name) {
+    return '--';
+  }
+
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+}
+
+type TaskCardAvatarProps = {
+  avatarUrl?: string | null;
+  name?: string | null;
+};
+
+function TaskCardAvatar({ avatarUrl, name }: TaskCardAvatarProps) {
+  const [hasImageError, setHasImageError] = useState(false);
+  const initials = getInitials(name);
+
+  if (avatarUrl && !hasImageError) {
+    return (
+      <img
+        alt={name ? `Avatar de ${name}` : 'Avatar do responsavel'}
+        className="task-card-avatar-image"
+        loading="lazy"
+        onError={() => setHasImageError(true)}
+        src={avatarUrl}
+      />
+    );
+  }
+
+  return <span className="task-card-avatar-fallback">{initials}</span>;
+}
+
 type DragCardState = {
   cardId: string;
   sourceColumnId: string;
@@ -993,48 +1030,58 @@ export function ProjectBoardPage() {
                             }
                             type="button"
                           >
-                            <div className="badge-row">
+                            <div className="task-card-top">
                               <span
                                 className={`badge ${getPriorityTone(card.priority)}`}
                               >
                                 {formatPriority(card.priority)}
                               </span>
-                              {canEditProject ? (
-                                <span
-                                  aria-label="Renomear card"
-                                  className="task-card-rename"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    const next = window.prompt(
-                                      "Novo nome do card:",
-                                      card.title,
-                                    );
-                                    const trimmed = next?.trim();
-                                    if (!trimmed || trimmed === card.title) return;
-                                    void renameCardMutation.mutateAsync({
-                                      cardId: card.id,
-                                      title: trimmed,
-                                      assigneeId: card.assignee?.id ?? "",
-                                      priority: card.priority,
-                                      description: card.description,
-                                      dueDate: card.dueDate,
-                                    });
-                                  }}
-                                  role="button"
-                                  title="Renomear card"
-                                >
-                                  ✎
-                                </span>
-                              ) : null}
+                              <div className="task-card-top-actions">
+                                {card.dueDate ? (
+                                  <span className={getDueDateTone(card.dueDate)}>
+                                    {formatShortDate(card.dueDate)}
+                                  </span>
+                                ) : null}
+                                {canEditProject ? (
+                                  <span
+                                    aria-label="Renomear card"
+                                    className="task-card-rename"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      const next = window.prompt(
+                                        "Novo nome do card:",
+                                        card.title,
+                                      );
+                                      const trimmed = next?.trim();
+                                      if (!trimmed || trimmed === card.title) return;
+                                      void renameCardMutation.mutateAsync({
+                                        cardId: card.id,
+                                        title: trimmed,
+                                        assigneeId: card.assignee?.id ?? "",
+                                        priority: card.priority,
+                                        description: card.description,
+                                        dueDate: card.dueDate,
+                                      });
+                                    }}
+                                    role="button"
+                                    title="Renomear card"
+                                  >
+                                    ✎
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
                             <h2 className="task-card-title">{card.title}</h2>
-                            <div className="task-card-meta">
-                              <span>
-                                {card.assignee?.name ?? "Sem responsavel"}
-                              </span>
-                              <span className={getDueDateTone(card.dueDate)}>
-                                {formatShortDate(card.dueDate)}
-                              </span>
+                            <div className="task-card-footer">
+                              <div
+                                className="task-card-avatar"
+                                title={card.assignee?.name ?? "Sem responsavel"}
+                              >
+                                <TaskCardAvatar
+                                  avatarUrl={card.assignee?.avatarUrl}
+                                  name={card.assignee?.name}
+                                />
+                              </div>
                             </div>
                           </button>
                           <div
