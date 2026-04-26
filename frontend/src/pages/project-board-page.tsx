@@ -1042,17 +1042,6 @@ export function ProjectBoardPage() {
                                     {formatShortDate(card.dueDate)}
                                   </span>
                                 ) : null}
-                                <div className="task-card-assignees">
-                                  <div
-                                    className="task-card-avatar"
-                                    title={card.assignee?.name ?? "Sem responsavel"}
-                                  >
-                                    <TaskCardAvatar
-                                      avatarUrl={card.assignee?.avatarUrl}
-                                      name={card.assignee?.name}
-                                    />
-                                  </div>
-                                </div>
                                 {canEditProject ? (
                                   <span
                                     aria-label="Renomear card"
@@ -1082,7 +1071,20 @@ export function ProjectBoardPage() {
                                 ) : null}
                               </div>
                             </div>
-                            <h2 className="task-card-title">{card.title}</h2>
+                            <div className="task-card-main">
+                              <h2 className="task-card-title">{card.title}</h2>
+                              <div className="task-card-assignees">
+                                <div
+                                  className="task-card-avatar"
+                                  title={card.assignee?.name ?? "Sem responsavel"}
+                                >
+                                  <TaskCardAvatar
+                                    avatarUrl={card.assignee?.avatarUrl}
+                                    name={card.assignee?.name}
+                                  />
+                                </div>
+                              </div>
+                            </div>
                           </button>
                           <div
                             className={getDropZoneClassName(column.id, index + 1)}

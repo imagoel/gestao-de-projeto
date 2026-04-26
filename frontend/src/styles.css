@@ -561,6 +561,8 @@ textarea {
   margin: 0;
   font-size: 0.98rem;
   line-height: 1.35;
+  flex: 1;
+  min-width: 0;
 }
 
 .task-card-top {
@@ -577,11 +579,19 @@ textarea {
   margin-left: auto;
 }
 
+.task-card-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .task-card-assignees {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .task-card-avatar {
