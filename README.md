@@ -197,4 +197,3 @@ Para atualizar uma stack ja publicada:
 ## Repositorios relacionados
 
 - principal: `git@github.com:imagoel/gestao-de-projeto.git`
-- espelho de trabalho: `git@github.com:atncelso/ClonedoCorno.git`
