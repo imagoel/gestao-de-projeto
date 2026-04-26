@@ -526,6 +526,10 @@ textarea {
   transition: background-color 0.2s ease, min-height 0.2s ease;
 }
 
+.board-drop-zone-top {
+  min-height: 0;
+}
+
 .board-drop-zone-active {
   min-height: 18px;
   background: rgba(24, 95, 165, 0.14);

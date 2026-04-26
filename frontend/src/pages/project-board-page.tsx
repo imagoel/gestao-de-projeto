@@ -775,9 +775,17 @@ export function ProjectBoardPage() {
   }
 
   function getDropZoneClassName(columnId: string, position: number) {
-    return dropTarget?.columnId === columnId && dropTarget.position === position
-      ? "board-drop-zone board-drop-zone-active"
-      : "board-drop-zone";
+    const classNames = ["board-drop-zone"];
+
+    if (position === 0) {
+      classNames.push("board-drop-zone-top");
+    }
+
+    if (dropTarget?.columnId === columnId && dropTarget.position === position) {
+      classNames.push("board-drop-zone-active");
+    }
+
+    return classNames.join(" ");
   }
 
   function getColumnBodyClassName(columnId: string) {
