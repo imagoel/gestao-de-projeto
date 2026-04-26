@@ -472,8 +472,8 @@ textarea {
 
 .board-column-body {
   display: grid;
-  gap: 10px;
-  min-height: 92px;
+  gap: 8px;
+  min-height: 84px;
   padding: 2px 0 0;
   border: 0;
   border-radius: 0;
@@ -533,8 +533,8 @@ textarea {
 
 .task-card {
   display: grid;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 11px 12px;
   border: 1px solid #d9d3c7;
   border-radius: 12px;
   background: #ffffff;
@@ -577,11 +577,11 @@ textarea {
   margin-left: auto;
 }
 
-.task-card-footer {
-  display: flex;
+.task-card-assignees {
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
-  min-height: 30px;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .task-card-avatar {
@@ -614,6 +614,10 @@ textarea {
   padding: 3px 8px;
   border-radius: 10px;
   font-size: 0.76rem;
+}
+
+.task-card-rename {
+  margin-left: 2px;
 }
 
 .task-due {
