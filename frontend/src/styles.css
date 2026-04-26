@@ -150,7 +150,7 @@ textarea {
 }
 
 .app-main {
-  padding: 28px;
+  padding: 22px 28px 88px;
   padding-bottom: 88px;
 }
 
@@ -159,7 +159,7 @@ textarea {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .page-header-actions {
@@ -466,29 +466,28 @@ textarea {
 
 .board-column {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   align-content: start;
 }
 
 .board-column-body {
   display: grid;
   gap: 10px;
-  min-height: 120px;
-  padding: 8px;
-  border: 1px solid #e7e1d5;
-  border-radius: 12px;
-  background: #f7f5ef;
+  min-height: 92px;
+  padding: 2px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .board-column-body-active {
-  background: #eef4fb;
-  border-color: #bfd1e6;
+  background: transparent;
 }
 
 .board-inline-note,
 .board-inline-error {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .board-column-header {
@@ -496,7 +495,7 @@ textarea {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border: 1px solid #e1dbcf;
   border-radius: 10px;
   background: #ebe6da;
@@ -641,7 +640,7 @@ textarea {
 }
 
 .task-empty {
-  padding: 16px;
+  padding: 14px;
   border: 1px dashed #c3beb2;
   border-radius: 12px;
   text-align: center;
@@ -1329,8 +1328,7 @@ textarea {
 
 @media (max-width: 640px) {
   .app-main {
-    padding: 20px;
-    padding-bottom: 84px;
+    padding: 18px 20px 84px;
   }
 
   .login-page {
