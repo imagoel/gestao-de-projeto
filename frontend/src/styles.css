@@ -521,7 +521,7 @@ textarea {
 }
 
 .board-drop-zone {
-  min-height: 10px;
+  min-height: 4px;
   border-radius: 999px;
   transition: background-color 0.2s ease, min-height 0.2s ease;
 }
