@@ -19,6 +19,9 @@ export function ProjectDetailPage() {
   const queryClient = useQueryClient();
   const { token, user } = useAuth();
   const { projectId = 'projeto' } = useParams();
+  const [isEditDescriptionOpen, setIsEditDescriptionOpen] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [addMemberUserId, setAddMemberUserId] = useState('');
   const [addMemberRole, setAddMemberRole] = useState<ProjectRole>('MEMBER');
@@ -42,6 +45,28 @@ export function ProjectDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.removeQueries({ queryKey: ['project', projectId] });
       navigate('/projetos');
+    },
+  });
+
+  const updateDescriptionMutation = useMutation({
+    mutationFn: () =>
+      api.updateProject(token!, projectId, {
+        description: descriptionDraft.trim(),
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
+        queryClient.invalidateQueries({ queryKey: ['projects'] }),
+      ]);
+      setIsEditDescriptionOpen(false);
+      setDescriptionError(null);
+    },
+    onError: (error) => {
+      setDescriptionError(
+        error instanceof ApiError
+          ? error.message
+          : 'Nao foi possivel atualizar a descricao do projeto.',
+      );
     },
   });
 
@@ -79,6 +104,14 @@ export function ProjectDetailPage() {
   const currentProjectMember = project?.members.find(
     (member) => member.user.id === user?.id,
   );
+  const canEditProject = Boolean(
+    user &&
+      project &&
+      (user.role === 'ADMIN' ||
+        project.ownerId === user.id ||
+        currentProjectMember?.role === 'MANAGER' ||
+        currentProjectMember?.role === 'MEMBER'),
+  );
   const canDeleteProject = Boolean(
     user &&
       project &&
@@ -103,11 +136,30 @@ export function ProjectDetailPage() {
     await deleteProjectMutation.mutateAsync();
   }
 
+  function openEditDescriptionModal() {
+    if (!project) {
+      return;
+    }
+
+    setDescriptionDraft(project.description ?? '');
+    setDescriptionError(null);
+    setIsEditDescriptionOpen(true);
+  }
+
   const action = project ? (
     <div className="page-header-actions">
       <Link className="secondary-button" to="/projetos">
         Voltar aos projetos
       </Link>
+      {canEditProject ? (
+        <button
+          className="secondary-button"
+          onClick={openEditDescriptionModal}
+          type="button"
+        >
+          Editar descricao
+        </button>
+      ) : null}
       {canDeleteProject ? (
         <button
           className="button-danger"
@@ -167,6 +219,57 @@ export function ProjectDetailPage() {
           }
         />
       ) : null}
+
+      <Modal
+        title="Editar descricao do projeto"
+        description="Atualize o resumo exibido na tela de detalhes deste projeto."
+        open={isEditDescriptionOpen}
+        onClose={() => {
+          setIsEditDescriptionOpen(false);
+          setDescriptionError(null);
+        }}
+        footer={
+          <>
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setIsEditDescriptionOpen(false);
+                setDescriptionError(null);
+              }}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="primary-button"
+              disabled={updateDescriptionMutation.isPending}
+              onClick={() => void updateDescriptionMutation.mutateAsync()}
+              type="button"
+            >
+              {updateDescriptionMutation.isPending ? 'Salvando...' : 'Salvar descricao'}
+            </button>
+          </>
+        }
+      >
+        <div className="form-grid">
+          <div className="field-group">
+            <label className="field-label" htmlFor="project-description">
+              Descricao
+            </label>
+            <textarea
+              className="field-input field-textarea"
+              id="project-description"
+              onChange={(event) => setDescriptionDraft(event.target.value)}
+              placeholder="Descreva rapidamente o objetivo, contexto ou observacoes do projeto."
+              value={descriptionDraft}
+            />
+          </div>
+          <p className="field-helper">
+            Deixe vazio se quiser remover a descricao atual.
+          </p>
+          {descriptionError ? <p className="form-error">{descriptionError}</p> : null}
+        </div>
+      </Modal>
 
       <Modal
         title="Adicionar membro"
@@ -240,7 +343,18 @@ export function ProjectDetailPage() {
         <div className="detail-grid">
           <section className="panel info-list">
             <div className="info-row">
-              <span className="info-label">Descricao</span>
+              <div className="info-label-row">
+                <span className="info-label">Descricao</span>
+                {canEditProject ? (
+                  <button
+                    className="text-button inline-edit-button"
+                    onClick={openEditDescriptionModal}
+                    type="button"
+                  >
+                    Editar
+                  </button>
+                ) : null}
+              </div>
               <span className="info-value">
                 {project.description || 'Projeto sem descricao cadastrada.'}
               </span>
@@ -313,6 +427,15 @@ export function ProjectDetailPage() {
                 <Link className="secondary-button" to="/projetos">
                   Voltar
                 </Link>
+                {canEditProject ? (
+                  <button
+                    className="secondary-button"
+                    onClick={openEditDescriptionModal}
+                    type="button"
+                  >
+                    Editar descricao
+                  </button>
+                ) : null}
                 {canDeleteProject ? (
                   <button
                     className="button-danger"

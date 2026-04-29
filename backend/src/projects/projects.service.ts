@@ -136,8 +136,13 @@ export class ProjectsService {
     });
   }
 
-  async update(id: string, updateProjectDto: UpdateProjectDto) {
+  async update(
+    currentUser: AuthenticatedUser,
+    id: string,
+    updateProjectDto: UpdateProjectDto,
+  ) {
     const project = await this.projectAccessService.ensureProjectExists(id);
+    await this.projectAccessService.ensureProjectWriteAccess(currentUser, id);
 
     if (updateProjectDto.ownerId) {
       await this.usersService.ensureUsersExist([updateProjectDto.ownerId]);
@@ -156,7 +161,10 @@ export class ProjectsService {
         where: { id: project.id },
         data: {
           name: updateProjectDto.name,
-          description: updateProjectDto.description,
+          description:
+            updateProjectDto.description === undefined
+              ? undefined
+              : (updateProjectDto.description.trim() || null),
           deadline:
             updateProjectDto.deadline === undefined
               ? undefined

@@ -682,11 +682,25 @@ textarea {
   gap: 4px;
 }
 
+.info-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .info-label {
   font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #6f6b63;
+}
+
+.inline-edit-button {
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .info-value {

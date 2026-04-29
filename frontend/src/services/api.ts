@@ -169,7 +169,12 @@ export const api = {
   updateProject(
     token: string,
     projectId: string,
-    payload: { folderId?: string | null; name?: string },
+    payload: {
+      folderId?: string | null;
+      name?: string;
+      description?: string;
+      deadline?: string | null;
+    },
   ) {
     return request<Project>(`/projects/${projectId}`, {
       method: 'PATCH',

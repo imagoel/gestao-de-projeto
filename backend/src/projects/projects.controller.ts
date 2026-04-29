@@ -43,10 +43,13 @@ export class ProjectsController {
     return this.projectsService.create(user, createProjectDto);
   }
 
-  @Roles(UserRole.ADMIN)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProjectDto: UpdateProjectDto) {
-    return this.projectsService.update(id, updateProjectDto);
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() updateProjectDto: UpdateProjectDto,
+  ) {
+    return this.projectsService.update(user, id, updateProjectDto);
   }
 
   @Delete(':id')
