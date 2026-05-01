@@ -8,9 +8,10 @@ O projeto foi construido para atender um MVP enxuto de gestao interna, com foco 
 
 - autenticacao por e-mail e senha
 - controle de acesso com perfis globais `ADMIN` e `MEMBER`
+- organizacao por secretaria, setor e pasta
 - projetos com board unico
 - colunas fixas de Kanban
-- cards com prioridade, responsavel, checklist e historico
+- cards com prioridade, responsavel, prazo opcional, checklist e historico
 - comentarios e arquivamento de cards
 - gestao basica de usuarios
 
@@ -62,9 +63,43 @@ No contexto da GTI, este repositorio representa um projeto-produto: ele e o sist
   - `Em andamento`
   - `Concluido`
 - `ADMIN` cria projetos e gerencia usuarios
-- `MEMBER` acessa apenas projetos dos quais participa
-- cards usam prioridade, responsavel principal e checklist
+- `MEMBER` acessa projetos por participacao direta ou por pasta liberada ao seu setor/secretaria
+- acesso por setor/pasta sem participacao no projeto e somente leitura
+- edicao de cards, checklist, comentarios e colunas exige participacao no projeto
+- cards usam prioridade, responsavel principal, prazo opcional e checklist
 - cards concluidos podem ser arquivados
+
+## Organizacao e permissoes
+
+O modelo atual organiza os projetos na seguinte arvore:
+
+```txt
+Secretaria
+  Setor
+    Pasta
+      Projeto
+```
+
+Cada projeto pertence obrigatoriamente a uma pasta. A pasta pertence a um setor e possui uma regra de visibilidade:
+
+- `SECTOR`: apenas usuarios vinculados ao mesmo setor visualizam a pasta e seus projetos.
+- `SECRETARIAT`: usuarios vinculados a qualquer setor da mesma secretaria visualizam a pasta e seus projetos.
+
+Perfis globais:
+
+- `ADMIN`: visao global, gerencia usuarios, secretarias, setores, pastas e projetos.
+- `MEMBER`: ve projetos em que participa, projetos que criou e projetos em pastas liberadas ao seu setor/secretaria.
+
+Papeis dentro do projeto:
+
+- `MANAGER`: edita projeto, gerencia membros e pode apagar o projeto.
+- `MEMBER`: cria/edita cards, checklist, comentarios e movimentacoes no projeto.
+
+Observacoes:
+
+- `VIEWER` foi removido do modelo. A leitura sem edicao agora vem da visibilidade por pasta/setor.
+- Usuario que enxerga um projeto somente por setor/pasta nao consegue editar cards nem comentar ate ser adicionado como membro do projeto.
+- O owner do projeto e criado como `MANAGER`.
 
 ## Como rodar localmente
 
@@ -166,6 +201,8 @@ O acesso inicial de administrador e definido pelas variaveis:
 
 Em ambiente local, use os valores configurados no seu `.env`.
 
+Ao executar o seed, tambem sao criadas as secretarias e setores iniciais usados pela GTI, incluindo `GTI / GTI`, `PREFEITO` e `SADS` com os setores informados no mapeamento inicial.
+
 ## Deploy / Portainer
 
 O projeto foi preparado para deploy via Portainer com base no `docker-compose.yml`.
@@ -185,12 +222,15 @@ Para atualizar uma stack ja publicada:
 
 - o sistema possui suporte a cards arquivados e restauracao no board
 - o board foi refinado para usar drag-and-drop, checklist, comentarios/historico e cards compactos
+- a tela de projetos agrupa por secretaria, setor e pasta
+- a tela de usuarios permite vincular membros a secretarias/setores
 - a documentacao operacional detalhada da GTI esta sendo consolidada de forma privada no Notion
 
 ## Documentacao complementar
 
 - Escopo do produto: `docs/escopo_sistema_gestao_projetos.docx`
 - Wireframes: `docs/wireframes_sistema_gestao_projetos.html`
+- Permissoes e organizacao: `docs/permissoes_organizacao.md`
 - Modelagem: `backend/prisma/schema.prisma`
 - Infra principal: `docker-compose.yml`
 
