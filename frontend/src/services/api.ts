@@ -9,6 +9,8 @@ import type {
   ProjectBoard,
   ProjectFolder,
   ProjectRole,
+  Secretariat,
+  FolderVisibility,
 } from '../types/api';
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '');
@@ -114,6 +116,7 @@ export const api = {
       password: string;
       role: ApiUser['role'];
       avatarUrl?: string;
+      sectorIds?: string[];
     },
   ) {
     return request<ApiUser>('/users', {
@@ -132,6 +135,7 @@ export const api = {
       password?: string;
       role?: ApiUser['role'];
       avatarUrl?: string;
+      sectorIds?: string[];
     },
   ) {
     return request<ApiUser>(`/users/${userId}`, {
@@ -156,6 +160,7 @@ export const api = {
       description?: string;
       deadline?: string | null;
       ownerId?: string;
+      folderId: string;
       memberIds?: string[];
     },
   ) {
@@ -170,7 +175,7 @@ export const api = {
     token: string,
     projectId: string,
     payload: {
-      folderId?: string | null;
+      folderId?: string;
       name?: string;
       description?: string;
       deadline?: string | null;
@@ -187,7 +192,14 @@ export const api = {
     return request<ProjectFolder[]>('/folders', { token });
   },
 
-  createFolder(token: string, payload: { name: string }) {
+  getSecretariats(token: string) {
+    return request<Secretariat[]>('/organization/secretariats', { token });
+  },
+
+  createFolder(
+    token: string,
+    payload: { name: string; sectorId: string; visibility?: FolderVisibility },
+  ) {
     return request<ProjectFolder>('/folders', {
       method: 'POST',
       token,
@@ -195,7 +207,11 @@ export const api = {
     });
   },
 
-  updateFolder(token: string, folderId: string, payload: { name: string }) {
+  updateFolder(
+    token: string,
+    folderId: string,
+    payload: { name?: string; sectorId?: string; visibility?: FolderVisibility },
+  ) {
     return request<ProjectFolder>(`/folders/${folderId}`, {
       method: 'PATCH',
       token,

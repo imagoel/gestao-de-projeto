@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, User } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -32,18 +32,37 @@ export class UsersService {
 
   async create(createUserDto: CreateUserDto) {
     await this.ensureEmailAvailable(createUserDto.email);
+    const sectorIds = createUserDto.sectorIds ?? [];
+    await this.ensureSectorsExist(sectorIds);
 
     const passwordHash = await hash(createUserDto.password, 10);
 
-    const user = await this.prisma.user.create({
-      data: {
-        name: createUserDto.name,
-        email: createUserDto.email,
-        passwordHash,
-        role: createUserDto.role,
-        avatarUrl: createUserDto.avatarUrl,
-      },
-      select: publicUserSelect,
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name: createUserDto.name,
+          email: createUserDto.email,
+          passwordHash,
+          role: createUserDto.role,
+          avatarUrl: createUserDto.avatarUrl,
+        },
+        select: { id: true },
+      });
+
+      if (sectorIds.length > 0) {
+        await tx.userSector.createMany({
+          data: sectorIds.map((sectorId) => ({
+            userId: createdUser.id,
+            sectorId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      return tx.user.findUniqueOrThrow({
+        where: { id: createdUser.id },
+        select: publicUserSelect,
+      });
     });
 
     return user;
@@ -54,6 +73,10 @@ export class UsersService {
 
     if (updateUserDto.email) {
       await this.ensureEmailAvailable(updateUserDto.email, id);
+    }
+
+    if (updateUserDto.sectorIds) {
+      await this.ensureSectorsExist(updateUserDto.sectorIds);
     }
 
     const data: Prisma.UserUpdateInput = {
@@ -67,10 +90,31 @@ export class UsersService {
       data.passwordHash = await hash(updateUserDto.password, 10);
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data,
-      select: publicUserSelect,
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data,
+        select: { id: true },
+      });
+
+      if (updateUserDto.sectorIds !== undefined) {
+        await tx.userSector.deleteMany({ where: { userId: id } });
+
+        if (updateUserDto.sectorIds.length > 0) {
+          await tx.userSector.createMany({
+            data: updateUserDto.sectorIds.map((sectorId) => ({
+              userId: id,
+              sectorId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return tx.user.findUniqueOrThrow({
+        where: { id },
+        select: publicUserSelect,
+      });
     });
   }
 
@@ -115,18 +159,9 @@ export class UsersService {
     }
   }
 
-  toPublicUser(user: Pick<User, keyof typeof publicUserSelect> & { [key: string]: unknown }) {
-    const { id, name, email, role, avatarUrl, createdAt, updatedAt } = user as User;
-
-    return {
-      id,
-      name,
-      email,
-      role,
-      avatarUrl,
-      createdAt,
-      updatedAt,
-    };
+  toPublicUser(user: UserWithPassword) {
+    const { passwordHash: _passwordHash, ...publicUser } = user;
+    return publicUser;
   }
 
   private async ensureEmailAvailable(email: string, ignoreUserId?: string) {
@@ -148,6 +183,24 @@ export class UsersService {
 
     if (!user) {
       throw new NotFoundException('Usuario nao encontrado.');
+    }
+  }
+
+  private async ensureSectorsExist(sectorIds: string[]) {
+    if (sectorIds.length === 0) {
+      return;
+    }
+
+    const count = await this.prisma.sector.count({
+      where: {
+        id: {
+          in: sectorIds,
+        },
+      },
+    });
+
+    if (count !== sectorIds.length) {
+      throw new NotFoundException('Um ou mais setores informados nao existem.');
     }
   }
 }

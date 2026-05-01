@@ -12,6 +12,7 @@ import { ColumnsModule } from './columns/columns.module';
 import { CommentsModule } from './comments/comments.module';
 import { FoldersModule } from './folders/folders.module';
 import { CommonModule } from './common/common.module';
+import { OrganizationModule } from './organization/organization.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { UsersModule } from './users/users.module';
@@ -45,6 +46,7 @@ import { UsersModule } from './users/users.module';
     CommentsModule,
     ChecklistModule,
     FoldersModule,
+    OrganizationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

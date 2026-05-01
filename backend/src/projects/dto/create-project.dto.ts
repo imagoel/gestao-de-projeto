@@ -1,4 +1,12 @@
-import { ArrayUnique, IsArray, IsDateString, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  ArrayUnique,
+  IsArray,
+  IsDateString,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MinLength,
+} from 'class-validator';
 
 export class CreateProjectDto {
   @IsString()
@@ -16,6 +24,9 @@ export class CreateProjectDto {
   @IsOptional()
   @IsUUID()
   ownerId?: string;
+
+  @IsUUID()
+  folderId!: string;
 
   @IsOptional()
   @IsArray()

@@ -8,6 +8,28 @@ export const publicUserSelect = {
   avatarUrl: true,
   createdAt: true,
   updatedAt: true,
+  sectorMemberships: {
+    select: {
+      id: true,
+      sector: {
+        select: {
+          id: true,
+          name: true,
+          secretariat: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      sector: {
+        name: 'asc',
+      },
+    },
+  },
 } satisfies Prisma.UserSelect;
 
 export type PublicUser = Prisma.UserGetPayload<{

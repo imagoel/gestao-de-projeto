@@ -39,6 +39,7 @@ describe('AuthService', () => {
       avatarUrl: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      sectorMemberships: [],
       passwordHash,
     };
 
@@ -51,6 +52,7 @@ describe('AuthService', () => {
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      sectorMemberships: user.sectorMemberships,
     });
     jwtService.signAsync.mockResolvedValue('signed-token');
     const publicUser = usersService.toPublicUser(user);

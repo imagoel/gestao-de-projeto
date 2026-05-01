@@ -1,7 +1,31 @@
 export type UserRole = 'ADMIN' | 'MEMBER';
-export type ProjectRole = 'MANAGER' | 'MEMBER' | 'VIEWER';
+export type ProjectRole = 'MANAGER' | 'MEMBER';
 export type ProjectStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ARCHIVED';
 export type CardPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type FolderVisibility = 'SECTOR' | 'SECRETARIAT';
+
+export interface SecretariatSummary {
+  id: string;
+  name: string;
+}
+
+export interface SectorSummary {
+  id: string;
+  name: string;
+  secretariat: SecretariatSummary;
+}
+
+export interface UserSectorMembership {
+  id: string;
+  sector: SectorSummary;
+}
+
+export interface Secretariat extends SecretariatSummary {
+  sectors: Array<{
+    id: string;
+    name: string;
+  }>;
+}
 
 export interface ApiUser {
   id: string;
@@ -9,6 +33,7 @@ export interface ApiUser {
   email: string;
   role: UserRole;
   avatarUrl?: string | null;
+  sectorMemberships?: UserSectorMembership[];
 }
 
 export interface ProjectMember {
@@ -36,7 +61,8 @@ export interface Project {
   status: ProjectStatus;
   deadline?: string | null;
   ownerId: string;
-  folderId?: string | null;
+  folderId: string;
+  folder?: ProjectFolder | null;
   owner: ApiUser;
   members: ProjectMember[];
   board?: ProjectBoardSummary | null;
@@ -45,6 +71,9 @@ export interface Project {
 export interface ProjectFolder {
   id: string;
   name: string;
+  visibility: FolderVisibility;
+  sectorId: string;
+  sector: SectorSummary;
   createdAt: string;
 }
 

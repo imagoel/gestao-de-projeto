@@ -15,6 +15,7 @@ type UserFormState = {
   password: string;
   role: UserRole;
   avatarUrl: string;
+  sectorIds: string[];
 };
 
 const initialUserForm: UserFormState = {
@@ -23,6 +24,7 @@ const initialUserForm: UserFormState = {
   password: '',
   role: 'MEMBER',
   avatarUrl: '',
+  sectorIds: [],
 };
 
 export function UsersPage() {
@@ -40,6 +42,19 @@ export function UsersPage() {
     enabled: Boolean(token),
   });
 
+  const secretariatsQuery = useQuery({
+    queryKey: ['secretariats'],
+    queryFn: () => api.getSecretariats(token!),
+    enabled: Boolean(token),
+  });
+
+  const availableSectors = (secretariatsQuery.data ?? []).flatMap((secretariat) =>
+    secretariat.sectors.map((sector) => ({
+      ...sector,
+      secretariat,
+    })),
+  );
+
   const saveUserMutation = useMutation({
     mutationFn: async () => {
       if (editingUser) {
@@ -49,6 +64,7 @@ export function UsersPage() {
           password: userForm.password || undefined,
           role: userForm.role,
           avatarUrl: userForm.avatarUrl || undefined,
+          sectorIds: userForm.sectorIds,
         });
       }
 
@@ -58,6 +74,7 @@ export function UsersPage() {
         password: userForm.password,
         role: userForm.role,
         avatarUrl: userForm.avatarUrl || undefined,
+        sectorIds: userForm.sectorIds,
       });
     },
     onSuccess: async (savedUser) => {
@@ -95,6 +112,8 @@ export function UsersPage() {
       password: '',
       role: selectedUser.role,
       avatarUrl: selectedUser.avatarUrl ?? '',
+      sectorIds:
+        selectedUser.sectorMemberships?.map((membership) => membership.sector.id) ?? [],
     });
     setFormError(null);
     setIsModalOpen(true);
@@ -106,10 +125,19 @@ export function UsersPage() {
     await saveUserMutation.mutateAsync();
   }
 
+  function toggleSector(sectorId: string) {
+    setUserForm((currentForm) => ({
+      ...currentForm,
+      sectorIds: currentForm.sectorIds.includes(sectorId)
+        ? currentForm.sectorIds.filter((id) => id !== sectorId)
+        : [...currentForm.sectorIds, sectorId],
+    }));
+  }
+
   return (
     <AppShell
       title="Usuarios"
-      copy="Gestao basica de usuarios do MVP, restrita ao perfil admin com criacao e edicao simples."
+      copy="Gestao de usuarios, perfil global e vinculo com secretarias/setores."
       action={
         <button className="primary-button" onClick={openCreateModal} type="button">
           Novo usuario
@@ -149,6 +177,7 @@ export function UsersPage() {
                 <th>Nome</th>
                 <th>E-mail</th>
                 <th>Perfil</th>
+                <th>Setores</th>
                 <th aria-label="Acoes" />
               </tr>
             </thead>
@@ -161,6 +190,19 @@ export function UsersPage() {
                     <span className={`badge ${listedUser.role === 'ADMIN' ? 'badge-blue' : 'badge-gray'}`}>
                       {listedUser.role === 'ADMIN' ? 'Admin' : 'Membro'}
                     </span>
+                  </td>
+                  <td>
+                    <div className="badge-row">
+                      {(listedUser.sectorMemberships ?? []).length > 0 ? (
+                        listedUser.sectorMemberships?.map((membership) => (
+                          <span className="badge badge-gray" key={membership.id}>
+                            {membership.sector.secretariat.name} / {membership.sector.name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="muted-text">Sem setor</span>
+                      )}
+                    </div>
                   </td>
                   <td className="users-table-actions">
                     <button
@@ -311,6 +353,37 @@ export function UsersPage() {
               type="url"
               value={userForm.avatarUrl}
             />
+          </div>
+
+          <div className="field-group">
+            <span className="field-label">Secretarias e setores</span>
+            <div className="checkbox-list">
+              {secretariatsQuery.isLoading ? (
+                <p className="field-helper">Carregando setores...</p>
+              ) : null}
+              {availableSectors.length > 0 ? (
+                availableSectors.map((sector) => (
+                  <label className="checkbox-item" key={sector.id}>
+                    <input
+                      checked={userForm.sectorIds.includes(sector.id)}
+                      onChange={() => toggleSector(sector.id)}
+                      type="checkbox"
+                    />
+                    <span>
+                      {sector.secretariat.name} / {sector.name}
+                    </span>
+                  </label>
+                ))
+              ) : (
+                <p className="field-helper">
+                  Nenhum setor cadastrado ainda. Cadastre setores antes de liberar
+                  visibilidade por pasta.
+                </p>
+              )}
+            </div>
+            <p className="field-helper">
+              O acesso às pastas dos membros é calculado a partir destes setores.
+            </p>
           </div>
 
           {formError ? <p className="form-error">{formError}</p> : null}

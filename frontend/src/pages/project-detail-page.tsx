@@ -332,7 +332,6 @@ export function ProjectDetailPage() {
             >
               <option value="MANAGER">Manager</option>
               <option value="MEMBER">Member</option>
-              <option value="VIEWER">Viewer</option>
             </select>
           </div>
           {memberError ? <p className="form-error">{memberError}</p> : null}

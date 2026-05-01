@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -20,6 +20,7 @@ type ProjectFormState = {
   description: string;
   deadline: string;
   ownerId: string;
+  folderId: string;
   memberIds: string[];
 };
 
@@ -28,10 +29,21 @@ const initialProjectForm: ProjectFormState = {
   description: '',
   deadline: '',
   ownerId: '',
+  folderId: '',
   memberIds: [],
 };
 
-const UNASSIGNED_KEY = '__unassigned__';
+type FolderFormState = {
+  name: string;
+  sectorId: string;
+  visibility: 'SECTOR' | 'SECRETARIAT';
+};
+
+const initialFolderForm: FolderFormState = {
+  name: '',
+  sectorId: '',
+  visibility: 'SECTOR',
+};
 
 export function ProjectsPage() {
   const navigate = useNavigate();
@@ -42,9 +54,9 @@ export function ProjectsPage() {
   const [projectForm, setProjectForm] = useState<ProjectFormState>(initialProjectForm);
   const [formError, setFormError] = useState<string | null>(null);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderForm, setNewFolderForm] = useState<FolderFormState>(initialFolderForm);
   const [folderError, setFolderError] = useState<string | null>(null);
-  const [openFolders, setOpenFolders] = useState<Set<string>>(() => new Set([UNASSIGNED_KEY]));
+  const [openFolders, setOpenFolders] = useState<Set<string>>(() => new Set());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
   function toggleFolder(key: string) {
@@ -65,6 +77,12 @@ export function ProjectsPage() {
   const foldersQuery = useQuery({
     queryKey: ['folders'],
     queryFn: () => api.getFolders(token!),
+    enabled: Boolean(token),
+  });
+
+  const secretariatsQuery = useQuery({
+    queryKey: ['secretariats'],
+    queryFn: () => api.getSecretariats(token!),
     enabled: Boolean(token && isAdmin),
   });
 
@@ -95,20 +113,83 @@ export function ProjectsPage() {
   });
 
   const availableUsers = usersQuery.data ?? [];
-  const folders = foldersQuery.data ?? [];
+  const folderOptions = foldersQuery.data ?? [];
+  const availableSectors = (secretariatsQuery.data ?? []).flatMap((secretariat) =>
+    secretariat.sectors.map((sector) => ({
+      ...sector,
+      secretariat,
+    })),
+  );
+
+  const visibleFolders = useMemo(() => {
+    const foldersById = new Map<string, ProjectFolder>();
+    folderOptions.forEach((folder) => foldersById.set(folder.id, folder));
+    (projectsQuery.data ?? []).forEach((project) => {
+      if (project.folder) {
+        foldersById.set(project.folder.id, project.folder);
+      }
+    });
+    return Array.from(foldersById.values());
+  }, [folderOptions, projectsQuery.data]);
+
+  useEffect(() => {
+    if (visibleFolders.length === 0) return;
+    setOpenFolders((current) => {
+      const next = new Set(current);
+      visibleFolders.forEach((folder) => next.add(folder.id));
+      return next;
+    });
+  }, [visibleFolders]);
 
   const groupedProjects = useMemo(() => {
     const projects = projectsQuery.data ?? [];
     const groups = new Map<string, Project[]>();
-    groups.set(UNASSIGNED_KEY, []);
-    folders.forEach((folder) => groups.set(folder.id, []));
+    visibleFolders.forEach((folder) => groups.set(folder.id, []));
     projects.forEach((project) => {
-      const key = project.folderId ?? UNASSIGNED_KEY;
+      const key = project.folderId;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(project);
     });
     return groups;
-  }, [projectsQuery.data, folders]);
+  }, [projectsQuery.data, visibleFolders]);
+
+  const organizationGroups = useMemo(() => {
+    const secretariatGroups = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        sectors: Map<string, { id: string; name: string; folders: ProjectFolder[] }>;
+      }
+    >();
+
+    visibleFolders.forEach((folder) => {
+      const secretariat = folder.sector.secretariat;
+      if (!secretariatGroups.has(secretariat.id)) {
+        secretariatGroups.set(secretariat.id, {
+          id: secretariat.id,
+          name: secretariat.name,
+          sectors: new Map(),
+        });
+      }
+
+      const secretariatGroup = secretariatGroups.get(secretariat.id)!;
+      if (!secretariatGroup.sectors.has(folder.sector.id)) {
+        secretariatGroup.sectors.set(folder.sector.id, {
+          id: folder.sector.id,
+          name: folder.sector.name,
+          folders: [],
+        });
+      }
+
+      secretariatGroup.sectors.get(folder.sector.id)!.folders.push(folder);
+    });
+
+    return Array.from(secretariatGroups.values()).map((secretariat) => ({
+      ...secretariat,
+      sectors: Array.from(secretariat.sectors.values()),
+    }));
+  }, [visibleFolders]);
 
   const createProjectMutation = useMutation({
     mutationFn: () =>
@@ -117,12 +198,17 @@ export function ProjectsPage() {
         description: projectForm.description || undefined,
         deadline: projectForm.deadline || undefined,
         ownerId: isAdmin ? projectForm.ownerId : (user?.id ?? ''),
+        folderId: projectForm.folderId,
         memberIds: isAdmin ? projectForm.memberIds : [],
       }),
     onSuccess: async (project) => {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       setIsCreateModalOpen(false);
-      setProjectForm({ ...initialProjectForm, ownerId: user?.id ?? '' });
+      setProjectForm({
+        ...initialProjectForm,
+        ownerId: user?.id ?? '',
+        folderId: folderOptions[0]?.id ?? '',
+      });
       setFormError(null);
       navigate(`/projetos/${project.id}`);
     },
@@ -134,11 +220,16 @@ export function ProjectsPage() {
   });
 
   const createFolderMutation = useMutation({
-    mutationFn: (name: string) => api.createFolder(token!, { name }),
+    mutationFn: (payload: FolderFormState) =>
+      api.createFolder(token!, {
+        name: payload.name,
+        sectorId: payload.sectorId,
+        visibility: payload.visibility,
+      }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['folders'] });
       setIsCreateFolderOpen(false);
-      setNewFolderName('');
+      setNewFolderForm(initialFolderForm);
       setFolderError(null);
     },
     onError: (error) => {
@@ -159,7 +250,7 @@ export function ProjectsPage() {
   });
 
   const moveProjectMutation = useMutation({
-    mutationFn: (payload: { projectId: string; folderId: string | null }) =>
+    mutationFn: (payload: { projectId: string; folderId: string }) =>
       api.updateProject(token!, payload.projectId, { folderId: payload.folderId }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -167,7 +258,11 @@ export function ProjectsPage() {
   });
 
   function openCreateModal() {
-    setProjectForm({ ...initialProjectForm, ownerId: user?.id ?? '' });
+    setProjectForm({
+      ...initialProjectForm,
+      ownerId: user?.id ?? '',
+      folderId: folderOptions[0]?.id ?? '',
+    });
     setFormError(null);
     setIsCreateModalOpen(true);
   }
@@ -240,7 +335,10 @@ export function ProjectsPage() {
         <button
           className="secondary-button"
           onClick={() => {
-            setNewFolderName('');
+            setNewFolderForm({
+              ...initialFolderForm,
+              sectorId: availableSectors[0]?.id ?? '',
+            });
             setFolderError(null);
             setIsCreateFolderOpen(true);
           }}
@@ -255,13 +353,12 @@ export function ProjectsPage() {
     </div>
   );
 
-  function renderFolderSection(folder: ProjectFolder | null) {
-    const key = folder?.id ?? UNASSIGNED_KEY;
+  function renderFolderSection(folder: ProjectFolder) {
+    const key = folder.id;
     const projects = groupedProjects.get(key) ?? [];
-    if (projects.length === 0 && !folder) return null;
     const isOpen = openFolders.has(key);
     const isDragOver = dragOverKey === key;
-    const targetFolderId = folder?.id ?? null;
+    const targetFolderId = folder.id;
 
     function handleDrop(e: DragEvent) {
       e.preventDefault();
@@ -295,11 +392,14 @@ export function ProjectsPage() {
           >
             <span className="folder-caret">{isOpen ? '▾' : '▸'}</span>
             <span className="folder-title">
-              {folder ? `📁 ${folder.name}` : 'Sem pasta'}
+              {folder.name}
             </span>
             <span className="folder-count">({projects.length})</span>
+            <span className="badge badge-gray">
+              {folder.visibility === 'SECRETARIAT' ? 'Secretaria' : 'Setor'}
+            </span>
           </button>
-          {folder && isAdmin ? (
+          {isAdmin ? (
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 className="text-button"
@@ -316,7 +416,7 @@ export function ProjectsPage() {
                 className="text-button"
                 disabled={deleteFolderMutation.isPending}
                 onClick={() => {
-                  if (window.confirm(`Apagar a pasta "${folder.name}"? Os projetos voltam para "Sem pasta".`)) {
+                  if (window.confirm(`Apagar a pasta "${folder.name}"? Apenas pastas vazias podem ser apagadas.`)) {
                     void deleteFolderMutation.mutateAsync(folder.id);
                   }
                 }}
@@ -344,7 +444,7 @@ export function ProjectsPage() {
   return (
     <AppShell
       title="Projetos"
-      copy="Lista central de projetos do MVP, com acesso filtrado por permissao e criacao restrita ao perfil admin."
+      copy="Lista central de projetos, organizada por secretaria, setor e pasta conforme suas permissoes."
       action={action}
     >
       {projectsQuery.isLoading ? (
@@ -370,16 +470,19 @@ export function ProjectsPage() {
 
       {!projectsQuery.isLoading && !projectsQuery.isError ? (
         projectsQuery.data && projectsQuery.data.length > 0 ? (
-          isAdmin ? (
-            <>
-              {folders.map((folder) => renderFolderSection(folder))}
-              {renderFolderSection(null)}
-            </>
-          ) : (
-            <section className="project-grid">
-              {projectsQuery.data.map(renderProjectCard)}
-            </section>
-          )
+          <div className="organization-list">
+            {organizationGroups.map((secretariat) => (
+              <section className="secretariat-section" key={secretariat.id}>
+                <h2 className="secretariat-title">{secretariat.name}</h2>
+                {secretariat.sectors.map((sector) => (
+                  <div className="sector-section" key={sector.id}>
+                    <h3 className="sector-title">{sector.name}</h3>
+                    {sector.folders.map((folder) => renderFolderSection(folder))}
+                  </div>
+                ))}
+              </section>
+            ))}
+          </div>
         ) : (
           <StatusState
             title="Nenhum projeto disponivel"
@@ -442,7 +545,7 @@ export function ProjectsPage() {
 
       <Modal
         title="Nova pasta"
-        description="Pastas ajudam a agrupar projetos por cliente, area ou tema."
+        description="Pastas agora pertencem a um setor e controlam quem consegue visualizar os projetos."
         open={isCreateFolderOpen}
         onClose={() => setIsCreateFolderOpen(false)}
         footer={
@@ -456,8 +559,17 @@ export function ProjectsPage() {
             </button>
             <button
               className="primary-button"
-              disabled={createFolderMutation.isPending || !newFolderName.trim()}
-              onClick={() => void createFolderMutation.mutateAsync(newFolderName.trim())}
+              disabled={
+                createFolderMutation.isPending ||
+                !newFolderForm.name.trim() ||
+                !newFolderForm.sectorId
+              }
+              onClick={() =>
+                void createFolderMutation.mutateAsync({
+                  ...newFolderForm,
+                  name: newFolderForm.name.trim(),
+                })
+              }
               type="button"
             >
               {createFolderMutation.isPending ? 'Criando...' : 'Criar pasta'}
@@ -472,16 +584,67 @@ export function ProjectsPage() {
               autoFocus
               className="field-input"
               id="new-folder-name"
-              onChange={(e) => setNewFolderName(e.target.value)}
+              onChange={(e) =>
+                setNewFolderForm((current) => ({ ...current, name: e.target.value }))
+              }
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && newFolderName.trim()) {
+                if (e.key === 'Enter' && newFolderForm.name.trim() && newFolderForm.sectorId) {
                   e.preventDefault();
-                  void createFolderMutation.mutateAsync(newFolderName.trim());
+                  void createFolderMutation.mutateAsync({
+                    ...newFolderForm,
+                    name: newFolderForm.name.trim(),
+                  });
                 }
               }}
               type="text"
-              value={newFolderName}
+              value={newFolderForm.name}
             />
+          </div>
+          <div className="form-row">
+            <div className="field-group">
+              <label className="field-label" htmlFor="new-folder-sector">
+                Setor
+              </label>
+              <select
+                className="field-input"
+                id="new-folder-sector"
+                onChange={(event) =>
+                  setNewFolderForm((current) => ({
+                    ...current,
+                    sectorId: event.target.value,
+                  }))
+                }
+                required
+                value={newFolderForm.sectorId}
+              >
+                <option value="">Selecione</option>
+                {availableSectors.map((sector) => (
+                  <option key={sector.id} value={sector.id}>
+                    {sector.secretariat.name} / {sector.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field-group">
+              <label className="field-label" htmlFor="new-folder-visibility">
+                Visibilidade
+              </label>
+              <select
+                className="field-input"
+                id="new-folder-visibility"
+                onChange={(event) =>
+                  setNewFolderForm((current) => ({
+                    ...current,
+                    visibility: event.target.value as FolderFormState['visibility'],
+                  }))
+                }
+                value={newFolderForm.visibility}
+              >
+                <option value="SECTOR">Privada do setor</option>
+                <option value="SECRETARIAT">Publica da secretaria</option>
+              </select>
+            </div>
           </div>
           {folderError ? <p className="form-error">{folderError}</p> : null}
         </div>
@@ -500,7 +663,7 @@ export function ProjectsPage() {
             </button>
             <button
               className="primary-button"
-              disabled={createProjectMutation.isPending}
+              disabled={createProjectMutation.isPending || !projectForm.folderId}
               form="create-project-form"
               type="submit"
             >
@@ -539,6 +702,32 @@ export function ProjectsPage() {
               rows={4}
               value={projectForm.description}
             />
+          </div>
+
+          <div className="field-group">
+            <label className="field-label" htmlFor="project-folder">Pasta</label>
+            <select
+              className="field-input"
+              id="project-folder"
+              onChange={(event) =>
+                setProjectForm((currentForm) => ({
+                  ...currentForm,
+                  folderId: event.target.value,
+                }))
+              }
+              required
+              value={projectForm.folderId}
+            >
+              <option value="">Selecione</option>
+              {folderOptions.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.sector.secretariat.name} / {folder.sector.name} / {folder.name}
+                </option>
+              ))}
+            </select>
+            <p className="field-helper">
+              A pasta define a secretaria/setor que podera visualizar este projeto.
+            </p>
           </div>
 
           <div className="form-row">

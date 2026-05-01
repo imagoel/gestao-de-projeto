@@ -40,6 +40,15 @@ const projectDetailsInclude = {
       },
     },
   },
+  folder: {
+    include: {
+      sector: {
+        include: {
+          secretariat: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.ProjectInclude;
 
 @Injectable()
@@ -89,6 +98,11 @@ export class ProjectsService {
       throw new NotFoundException('Owner do projeto nao encontrado.');
     }
 
+    await this.projectAccessService.ensureFolderAccess(
+      currentUser,
+      createProjectDto.folderId,
+    );
+
     const uniqueMemberIds = Array.from(new Set([...memberIds, ownerId]));
 
     await this.usersService.ensureUsersExist(uniqueMemberIds);
@@ -100,6 +114,7 @@ export class ProjectsService {
           description: createProjectDto.description,
           deadline: normalizeDateInput(createProjectDto.deadline),
           ownerId: ownerId,
+          folderId: createProjectDto.folderId,
           status: ProjectStatus.ACTIVE,
         },
       });
@@ -148,12 +163,11 @@ export class ProjectsService {
       await this.usersService.ensureUsersExist([updateProjectDto.ownerId]);
     }
 
-    if (updateProjectDto.folderId) {
-      const folder = await this.prisma.projectFolder.findUnique({
-        where: { id: updateProjectDto.folderId },
-        select: { id: true },
-      });
-      if (!folder) throw new NotFoundException('Pasta nao encontrada.');
+    if (updateProjectDto.folderId !== undefined) {
+      await this.projectAccessService.ensureFolderAccess(
+        currentUser,
+        updateProjectDto.folderId,
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -171,10 +185,7 @@ export class ProjectsService {
               : normalizeDateInput(updateProjectDto.deadline),
           status: updateProjectDto.status,
           ownerId: updateProjectDto.ownerId,
-          folderId:
-            updateProjectDto.folderId === undefined
-              ? undefined
-              : updateProjectDto.folderId,
+          folderId: updateProjectDto.folderId,
         },
       });
 

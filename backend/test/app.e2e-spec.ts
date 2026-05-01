@@ -11,6 +11,8 @@ describe('Gestao GTI API (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let adminId: string;
+  let defaultSectorId: string;
+  let defaultFolderId: string;
 
   const adminCredentials = {
     email: 'admin@empresa.com',
@@ -54,6 +56,35 @@ describe('Gestao GTI API (e2e)', () => {
     });
 
     adminId = admin.id;
+
+    const secretariat = await prisma.secretariat.create({
+      data: { name: 'GTI' },
+    });
+
+    const sector = await prisma.sector.create({
+      data: {
+        name: 'GTI',
+        secretariatId: secretariat.id,
+      },
+    });
+
+    defaultSectorId = sector.id;
+
+    await prisma.userSector.create({
+      data: {
+        userId: admin.id,
+        sectorId: sector.id,
+      },
+    });
+
+    const folder = await prisma.projectFolder.create({
+      data: {
+        name: 'Geral GTI',
+        sectorId: sector.id,
+      },
+    });
+
+    defaultFolderId = folder.id;
   });
 
   afterAll(async () => {
@@ -116,6 +147,7 @@ describe('Gestao GTI API (e2e)', () => {
         description: 'Projeto de teste',
         deadline: '2026-07-01',
         ownerId: adminId,
+        folderId: defaultFolderId,
       })
       .expect(201);
 
@@ -138,6 +170,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto do membro',
         ownerId: adminId,
+        folderId: defaultFolderId,
         memberIds: [member.id],
       })
       .expect(201);
@@ -148,6 +181,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto privado',
         ownerId: adminId,
+        folderId: defaultFolderId,
       })
       .expect(201);
 
@@ -171,7 +205,7 @@ describe('Gestao GTI API (e2e)', () => {
     const adminToken = await getAdminToken();
     const member = await createMember('delete-member@empresa.com');
     const manager = await createMember('delete-manager@empresa.com');
-    const ownerMember = await createMember('delete-owner@empresa.com');
+    const ownerMember = await createMember('delete-owner@empresa.com', [defaultSectorId]);
     const memberToken = await getTokenForUser(member.email, 'membro1234');
     const managerToken = await getTokenForUser(manager.email, 'membro1234');
     const ownerToken = await getTokenForUser(ownerMember.email, 'membro1234');
@@ -182,6 +216,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto descartavel',
         ownerId: adminId,
+        folderId: defaultFolderId,
         memberIds: [member.id],
       })
       .expect(201);
@@ -210,6 +245,7 @@ describe('Gestao GTI API (e2e)', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         name: 'Projeto do proprio membro',
+        folderId: defaultFolderId,
       })
       .expect(201);
 
@@ -224,6 +260,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto admin',
         ownerId: adminId,
+        folderId: defaultFolderId,
       })
       .expect(201);
 
@@ -260,6 +297,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto com cards',
         ownerId: adminId,
+        folderId: defaultFolderId,
         memberIds: [member.id],
       })
       .expect(201);
@@ -351,6 +389,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto colaborativo',
         ownerId: adminId,
+        folderId: defaultFolderId,
         memberIds: [member.id],
       })
       .expect(201);
@@ -455,6 +494,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto legado',
         ownerId: adminId,
+        folderId: defaultFolderId,
       })
       .expect(201);
 
@@ -487,6 +527,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto membros',
         ownerId: adminId,
+        folderId: defaultFolderId,
       })
       .expect(201);
 
@@ -506,11 +547,11 @@ describe('Gestao GTI API (e2e)', () => {
       .send({ userId: member.id })
       .expect(409);
 
-    // Add second member as viewer
+    // Add second member
     await request(app.getHttpServer())
       .post(`/api/projects/${projectId}/members`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ userId: member2.id, role: 'VIEWER' })
+      .send({ userId: member2.id, role: 'MEMBER' })
       .expect(201);
 
     // Verify project has 3 members (admin + member + member2)
@@ -560,6 +601,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto colunas',
         ownerId: adminId,
+        folderId: defaultFolderId,
       })
       .expect(201);
 
@@ -632,6 +674,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto coluna com card',
         ownerId: adminId,
+        folderId: defaultFolderId,
         memberIds: [member.id],
       })
       .expect(201);
@@ -656,59 +699,58 @@ describe('Gestao GTI API (e2e)', () => {
       .expect(400);
   });
 
-  it('blocks viewers from modifying columns', async () => {
+  it('blocks sector-only users from modifying columns', async () => {
     const adminToken = await getAdminToken();
-    const viewer = await createMember('viewer-coluna@empresa.com');
+    const sectorUser = await createMember('viewer-coluna@empresa.com', [defaultSectorId]);
 
     const projectResponse = await request(app.getHttpServer())
       .post('/api/projects')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        name: 'Projeto viewer coluna',
+        name: 'Projeto leitura por setor',
         ownerId: adminId,
+        folderId: defaultFolderId,
       })
       .expect(201);
 
-    // Add viewer
-    await request(app.getHttpServer())
-      .post(`/api/projects/${projectResponse.body.id}/members`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ userId: viewer.id, role: 'VIEWER' })
-      .expect(201);
-
-    const viewerToken = await getTokenForUser(viewer.email, 'membro1234');
+    const sectorUserToken = await getTokenForUser(sectorUser.email, 'membro1234');
     const boardId = projectResponse.body.board.id;
     const columnId = projectResponse.body.board.columns[0].id;
 
-    // Viewer cannot create column
+    await request(app.getHttpServer())
+      .get(`/api/projects/${projectResponse.body.id}/board`)
+      .set('Authorization', `Bearer ${sectorUserToken}`)
+      .expect(200);
+
+    // Sector-only user cannot create column
     await request(app.getHttpServer())
       .post(`/api/boards/${boardId}/columns`)
-      .set('Authorization', `Bearer ${viewerToken}`)
+      .set('Authorization', `Bearer ${sectorUserToken}`)
       .send({ title: 'Nova' })
       .expect(403);
 
-    // Viewer cannot rename column
+    // Sector-only user cannot rename column
     await request(app.getHttpServer())
       .patch(`/api/columns/${columnId}`)
-      .set('Authorization', `Bearer ${viewerToken}`)
+      .set('Authorization', `Bearer ${sectorUserToken}`)
       .send({ title: 'Renomeada' })
       .expect(403);
 
-    // Viewer cannot delete column
+    // Sector-only user cannot delete column
     await request(app.getHttpServer())
       .delete(`/api/columns/${columnId}`)
-      .set('Authorization', `Bearer ${viewerToken}`)
+      .set('Authorization', `Bearer ${sectorUserToken}`)
       .expect(403);
   });
 
-  it('manages project folders: create, list, assign project, remove and detach', async () => {
+  it('manages project folders: create, list, assign project, and block deletion while used', async () => {
     const adminToken = await getAdminToken();
 
     // Create folder
     const folderResponse = await request(app.getHttpServer())
       .post('/api/folders')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Prefeitura' })
+      .send({ name: 'Prefeitura', sectorId: defaultSectorId })
       .expect(201);
 
     expect(folderResponse.body.name).toBe('Prefeitura');
@@ -720,7 +762,7 @@ describe('Gestao GTI API (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
-    expect(foldersResponse.body).toHaveLength(1);
+    expect(foldersResponse.body).toHaveLength(2);
 
     // Create project
     const projectResponse = await request(app.getHttpServer())
@@ -729,6 +771,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Projeto da Prefeitura',
         ownerId: adminId,
+        folderId: defaultFolderId,
       })
       .expect(201);
 
@@ -743,20 +786,15 @@ describe('Gestao GTI API (e2e)', () => {
 
     expect(updatedProject.body.folderId).toBe(folderId);
 
-    // Move project out of folder
-    const detached = await request(app.getHttpServer())
-      .patch(`/api/projects/${projectId}`)
+    await request(app.getHttpServer())
+      .delete(`/api/folders/${folderId}`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ folderId: null })
-      .expect(200);
+      .expect(400);
 
-    expect(detached.body.folderId).toBeNull();
-
-    // Re-assign and then delete folder — project must remain (folderId becomes null)
     await request(app.getHttpServer())
       .patch(`/api/projects/${projectId}`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ folderId })
+      .send({ folderId: defaultFolderId })
       .expect(200);
 
     await request(app.getHttpServer())
@@ -769,32 +807,33 @@ describe('Gestao GTI API (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
-    expect(projectAfter.body.folderId).toBeNull();
+    expect(projectAfter.body.folderId).toBe(defaultFolderId);
   });
 
-  it('blocks members from viewing and managing folders', async () => {
+  it('lets members view authorized folders and blocks folder management', async () => {
     const adminToken = await getAdminToken();
-    const member = await createMember('pasta-membro@empresa.com');
+    const member = await createMember('pasta-membro@empresa.com', [defaultSectorId]);
     const memberToken = await getTokenForUser(member.email, 'membro1234');
 
-    // Member cannot list folders
-    await request(app.getHttpServer())
+    const memberFoldersResponse = await request(app.getHttpServer())
       .get('/api/folders')
       .set('Authorization', `Bearer ${memberToken}`)
-      .expect(403);
+      .expect(200);
+
+    expect(memberFoldersResponse.body).toHaveLength(1);
 
     // Member cannot create
     await request(app.getHttpServer())
       .post('/api/folders')
       .set('Authorization', `Bearer ${memberToken}`)
-      .send({ name: 'Pasta' })
+      .send({ name: 'Pasta', sectorId: defaultSectorId })
       .expect(403);
 
     // Admin creates one
     const folderResponse = await request(app.getHttpServer())
       .post('/api/folders')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Pasta admin' })
+      .send({ name: 'Pasta admin', sectorId: defaultSectorId })
       .expect(201);
 
     // Member cannot rename
@@ -849,15 +888,15 @@ describe('Gestao GTI API (e2e)', () => {
       .expect(201);
   });
 
-  it('allows a member to create their own project (auto-assigned as owner)', async () => {
-    const member = await createMember('criador@empresa.com');
+  it('allows a member to create their own project in an authorized folder', async () => {
+    const member = await createMember('criador@empresa.com', [defaultSectorId]);
     const memberToken = await loginUser('criador@empresa.com', 'membro1234');
 
-    // Member creates project without specifying owner — backend forces self
+    // Member creates project without specifying owner; backend forces self.
     const created = await request(app.getHttpServer())
       .post('/api/projects')
       .set('Authorization', `Bearer ${memberToken}`)
-      .send({ name: 'Projeto criado por membro' })
+      .send({ name: 'Projeto criado por membro', folderId: defaultFolderId })
       .expect(201);
 
     expect(created.body.ownerId).toBe(member.id);
@@ -872,27 +911,19 @@ describe('Gestao GTI API (e2e)', () => {
     expect(list.body.find((p: { id: string }) => p.id === created.body.id)).toBeDefined();
   });
 
-  it('allows viewers to read the project but blocks write operations', async () => {
+  it('allows sector users to read projects but blocks write operations without membership', async () => {
     const adminToken = await getAdminToken();
     const member = await createMember('editor@empresa.com');
-    const viewer = await createMember('viewer@empresa.com');
+    const sectorUser = await createMember('viewer@empresa.com', [defaultSectorId]);
 
     const projectResponse = await request(app.getHttpServer())
       .post('/api/projects')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        name: 'Projeto com viewer',
+        name: 'Projeto com leitura por setor',
         ownerId: adminId,
+        folderId: defaultFolderId,
         memberIds: [member.id],
-      })
-      .expect(201);
-
-    await request(app.getHttpServer())
-      .post(`/api/projects/${projectResponse.body.id}/members`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        userId: viewer.id,
-        role: 'VIEWER',
       })
       .expect(201);
 
@@ -909,16 +940,16 @@ describe('Gestao GTI API (e2e)', () => {
       })
       .expect(201);
 
-    const viewerToken = await getTokenForUser(viewer.email, 'membro1234');
+    const sectorUserToken = await getTokenForUser(sectorUser.email, 'membro1234');
 
     await request(app.getHttpServer())
       .get(`/api/projects/${projectResponse.body.id}/board`)
-      .set('Authorization', `Bearer ${viewerToken}`)
+      .set('Authorization', `Bearer ${sectorUserToken}`)
       .expect(200);
 
     await request(app.getHttpServer())
       .post(`/api/cards/${cardResponse.body.id}/comments`)
-      .set('Authorization', `Bearer ${viewerToken}`)
+      .set('Authorization', `Bearer ${sectorUserToken}`)
       .send({
         content: 'Nao deveria comentar.',
       })
@@ -926,7 +957,7 @@ describe('Gestao GTI API (e2e)', () => {
 
     await request(app.getHttpServer())
       .post(`/api/cards/${cardResponse.body.id}/checklist-items`)
-      .set('Authorization', `Bearer ${viewerToken}`)
+      .set('Authorization', `Bearer ${sectorUserToken}`)
       .send({
         title: 'Nao deveria criar item.',
       })
@@ -934,7 +965,7 @@ describe('Gestao GTI API (e2e)', () => {
 
     await request(app.getHttpServer())
       .patch(`/api/cards/${cardResponse.body.id}`)
-      .set('Authorization', `Bearer ${viewerToken}`)
+      .set('Authorization', `Bearer ${sectorUserToken}`)
       .send({
         title: 'Tentativa de edicao',
         assigneeId: member.id,
@@ -997,7 +1028,11 @@ describe('Gestao GTI API (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/projects')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Sem owner', ownerId: '00000000-0000-0000-0000-000000000000' })
+      .send({
+        name: 'Sem owner',
+        ownerId: '00000000-0000-0000-0000-000000000000',
+        folderId: defaultFolderId,
+      })
       .expect(404);
 
     // Project create with non-existing memberIds -> 404
@@ -1007,6 +1042,7 @@ describe('Gestao GTI API (e2e)', () => {
       .send({
         name: 'Membros invalidos',
         ownerId: adminId,
+        folderId: defaultFolderId,
         memberIds: ['00000000-0000-0000-0000-000000000000'],
       })
       .expect((res) => {
@@ -1031,7 +1067,7 @@ describe('Gestao GTI API (e2e)', () => {
     const project = await request(app.getHttpServer())
       .post('/api/projects')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Projeto edit', ownerId: adminId })
+      .send({ name: 'Projeto edit', ownerId: adminId, folderId: defaultFolderId })
       .expect(201);
 
     // Update name, description, deadline, status
@@ -1104,7 +1140,7 @@ describe('Gestao GTI API (e2e)', () => {
     const folder = await request(app.getHttpServer())
       .post('/api/folders')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Original' })
+      .send({ name: 'Original', sectorId: defaultSectorId })
       .expect(201);
 
     // Rename
@@ -1136,7 +1172,12 @@ describe('Gestao GTI API (e2e)', () => {
     const project = await request(app.getHttpServer())
       .post('/api/projects')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Coment proj', ownerId: adminId, memberIds: [member.id] })
+      .send({
+        name: 'Coment proj',
+        ownerId: adminId,
+        folderId: defaultFolderId,
+        memberIds: [member.id],
+      })
       .expect(201);
 
     const todoColumn = project.body.board.columns[0];
@@ -1189,7 +1230,7 @@ describe('Gestao GTI API (e2e)', () => {
     const project = await request(app.getHttpServer())
       .post('/api/projects')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Privado', ownerId: adminId })
+      .send({ name: 'Privado', ownerId: adminId, folderId: defaultFolderId })
       .expect(201);
 
     const outsiderToken = await getTokenForUser(outsider.email, 'membro1234');
@@ -1221,7 +1262,12 @@ describe('Gestao GTI API (e2e)', () => {
     const project = await request(app.getHttpServer())
       .post('/api/projects')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Card assignee', ownerId: adminId, memberIds: [member.id] })
+      .send({
+        name: 'Card assignee',
+        ownerId: adminId,
+        folderId: defaultFolderId,
+        memberIds: [member.id],
+      })
       .expect(201);
 
     const todoColumn = project.body.board.columns[0];
@@ -1250,13 +1296,16 @@ describe('Gestao GTI API (e2e)', () => {
     await prisma.projectMember.deleteMany();
     await prisma.project.deleteMany();
     await prisma.projectFolder.deleteMany();
+    await prisma.userSector.deleteMany();
+    await prisma.sector.deleteMany();
+    await prisma.secretariat.deleteMany();
     await prisma.user.deleteMany();
   }
 
-  async function createMember(email: string) {
+  async function createMember(email: string, sectorIds: string[] = []) {
     const passwordHash = await hash('membro1234', 10);
 
-    return prisma.user.create({
+    const member = await prisma.user.create({
       data: {
         name: 'Membro',
         email,
@@ -1264,6 +1313,17 @@ describe('Gestao GTI API (e2e)', () => {
         role: UserRole.MEMBER,
       },
     });
+
+    if (sectorIds.length > 0) {
+      await prisma.userSector.createMany({
+        data: sectorIds.map((sectorId) => ({
+          userId: member.id,
+          sectorId,
+        })),
+      });
+    }
+
+    return member;
   }
 
   async function loginAsAdmin() {

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, ProjectRole, UserRole } from '@prisma/client';
+import { FolderVisibility, Prisma, ProjectRole, UserRole } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
@@ -44,6 +44,15 @@ export class ProjectAccessService {
           },
           orderBy: {
             joinedAt: 'asc',
+          },
+        },
+        folder: {
+          include: {
+            sector: {
+              include: {
+                secretariat: true,
+              },
+            },
           },
         },
       },
@@ -99,9 +108,13 @@ export class ProjectAccessService {
 
     const membershipRole = project.members[0]?.role;
 
-    if (membershipRole === ProjectRole.VIEWER) {
-      throw new ForbiddenException('Participantes com perfil VIEWER possuem acesso somente leitura.');
+    if (membershipRole === ProjectRole.MANAGER || membershipRole === ProjectRole.MEMBER) {
+      return;
     }
+
+    throw new ForbiddenException(
+      'Apenas participantes do projeto podem editar cards e informacoes.',
+    );
   }
 
   async ensureProjectDeleteAccess(user: AuthenticatedUser, projectId: string) {
@@ -186,6 +199,11 @@ export class ProjectAccessService {
             },
           },
         },
+        {
+          folder: {
+            is: this.buildFolderAccessWhere(user),
+          },
+        },
       ],
     };
 
@@ -196,5 +214,78 @@ export class ProjectAccessService {
     return {
       AND: [{ id: projectId }, restrictedWhere],
     };
+  }
+
+  buildFolderAccessWhere(user: AuthenticatedUser): Prisma.ProjectFolderWhereInput {
+    if (user.role === UserRole.ADMIN) {
+      return {};
+    }
+
+    return {
+      OR: [
+        {
+          visibility: FolderVisibility.SECTOR,
+          sector: {
+            userMemberships: {
+              some: {
+                userId: user.id,
+              },
+            },
+          },
+        },
+        {
+          visibility: FolderVisibility.SECRETARIAT,
+          sector: {
+            secretariat: {
+              sectors: {
+                some: {
+                  userMemberships: {
+                    some: {
+                      userId: user.id,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  async ensureFolderAccess(user: AuthenticatedUser, folderId: string) {
+    const existingFolder = await this.prisma.projectFolder.findUnique({
+      where: { id: folderId },
+      include: {
+        sector: {
+          include: {
+            secretariat: true,
+          },
+        },
+      },
+    });
+
+    if (!existingFolder) {
+      throw new NotFoundException('Pasta nao encontrada.');
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      return existingFolder;
+    }
+
+    const accessibleFolder = await this.prisma.projectFolder.findFirst({
+      where: {
+        AND: [{ id: folderId }, this.buildFolderAccessWhere(user)],
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!accessibleFolder) {
+      throw new ForbiddenException('Pasta indisponivel para este usuario.');
+    }
+
+    return existingFolder;
   }
 }

@@ -1,8 +1,17 @@
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { FolderVisibility } from '@prisma/client';
+import { IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class UpdateFolderDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MinLength(1)
-  name!: string;
+  name?: string;
+
+  @IsOptional()
+  @IsUUID()
+  sectorId?: string;
+
+  @IsOptional()
+  @IsEnum(FolderVisibility)
+  visibility?: FolderVisibility;
 }
