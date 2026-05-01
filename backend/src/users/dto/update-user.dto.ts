@@ -2,6 +2,7 @@ import { UserRole } from '@prisma/client';
 import {
   ArrayUnique,
   IsArray,
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsOptional,
@@ -28,6 +29,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 
   @IsOptional()
   @IsString()

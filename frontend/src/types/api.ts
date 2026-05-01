@@ -27,11 +27,16 @@ export interface Secretariat extends SecretariatSummary {
   }>;
 }
 
+export interface Sector extends SectorSummary {
+  secretariatId: string;
+}
+
 export interface ApiUser {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  isActive: boolean;
   avatarUrl?: string | null;
   sectorMemberships?: UserSectorMembership[];
 }

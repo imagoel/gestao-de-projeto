@@ -44,6 +44,7 @@ export class UsersService {
           email: createUserDto.email,
           passwordHash,
           role: createUserDto.role,
+          isActive: createUserDto.isActive ?? true,
           avatarUrl: createUserDto.avatarUrl,
         },
         select: { id: true },
@@ -83,6 +84,7 @@ export class UsersService {
       name: updateUserDto.name,
       email: updateUserDto.email,
       role: updateUserDto.role,
+      isActive: updateUserDto.isActive,
       avatarUrl: updateUserDto.avatarUrl,
     };
 

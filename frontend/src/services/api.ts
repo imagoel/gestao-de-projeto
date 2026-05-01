@@ -9,6 +9,7 @@ import type {
   ProjectBoard,
   ProjectFolder,
   ProjectRole,
+  Sector,
   Secretariat,
   FolderVisibility,
 } from '../types/api';
@@ -115,6 +116,7 @@ export const api = {
       email: string;
       password: string;
       role: ApiUser['role'];
+      isActive?: boolean;
       avatarUrl?: string;
       sectorIds?: string[];
     },
@@ -134,6 +136,7 @@ export const api = {
       email?: string;
       password?: string;
       role?: ApiUser['role'];
+      isActive?: boolean;
       avatarUrl?: string;
       sectorIds?: string[];
     },
@@ -194,6 +197,56 @@ export const api = {
 
   getSecretariats(token: string) {
     return request<Secretariat[]>('/organization/secretariats', { token });
+  },
+
+  createSecretariat(token: string, payload: { name: string }) {
+    return request<Secretariat>('/organization/secretariats', {
+      method: 'POST',
+      token,
+      body: payload,
+    });
+  },
+
+  updateSecretariat(token: string, secretariatId: string, payload: { name: string }) {
+    return request<Secretariat>(`/organization/secretariats/${secretariatId}`, {
+      method: 'PATCH',
+      token,
+      body: payload,
+    });
+  },
+
+  deleteSecretariat(token: string, secretariatId: string) {
+    return request<{ success: true }>(`/organization/secretariats/${secretariatId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
+  createSector(token: string, payload: { name: string; secretariatId: string }) {
+    return request<Sector>('/organization/sectors', {
+      method: 'POST',
+      token,
+      body: payload,
+    });
+  },
+
+  updateSector(
+    token: string,
+    sectorId: string,
+    payload: { name?: string; secretariatId?: string },
+  ) {
+    return request<Sector>(`/organization/sectors/${sectorId}`, {
+      method: 'PATCH',
+      token,
+      body: payload,
+    });
+  },
+
+  deleteSector(token: string, sectorId: string) {
+    return request<{ success: true }>(`/organization/sectors/${sectorId}`, {
+      method: 'DELETE',
+      token,
+    });
   },
 
   createFolder(

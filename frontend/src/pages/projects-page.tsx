@@ -444,7 +444,6 @@ export function ProjectsPage() {
   return (
     <AppShell
       title="Projetos"
-      copy="Lista central de projetos, organizada por secretaria, setor e pasta conforme suas permissoes."
       action={action}
     >
       {projectsQuery.isLoading ? (
@@ -472,15 +471,18 @@ export function ProjectsPage() {
         projectsQuery.data && projectsQuery.data.length > 0 ? (
           <div className="organization-list">
             {organizationGroups.map((secretariat) => (
-              <section className="secretariat-section" key={secretariat.id}>
-                <h2 className="secretariat-title">{secretariat.name}</h2>
+              <div className="secretariat-section" key={secretariat.id}>
                 {secretariat.sectors.map((sector) => (
-                  <div className="sector-section" key={sector.id}>
-                    <h3 className="sector-title">{sector.name}</h3>
+                  <section className="sector-section" key={sector.id}>
+                    <div className="organization-path">
+                      <span>{secretariat.name}</span>
+                      <span className="organization-path-separator">&gt;</span>
+                      <span>{sector.name}</span>
+                    </div>
                     {sector.folders.map((folder) => renderFolderSection(folder))}
-                  </div>
+                  </section>
                 ))}
-              </section>
+              </div>
             ))}
           </div>
         ) : (

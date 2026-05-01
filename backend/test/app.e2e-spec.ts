@@ -1024,6 +1024,20 @@ describe('Gestao GTI API (e2e)', () => {
       .send({ email: 'bea@empresa.com', password: 'novasenha123' })
       .expect(201);
 
+    await request(app.getHttpServer())
+      .patch(`/api/users/${created.body.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ isActive: false })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.isActive).toBe(false);
+      });
+
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'bea@empresa.com', password: 'novasenha123' })
+      .expect(401);
+
     // Project create with non-existing owner -> 404
     await request(app.getHttpServer())
       .post('/api/projects')
@@ -1052,7 +1066,7 @@ describe('Gestao GTI API (e2e)', () => {
       });
 
     // Member cannot update users
-    const memberToken = await loginUser('bea@empresa.com', 'novasenha123');
+    const memberToken = await loginUser('caio@empresa.com', 'senha12345');
     await request(app.getHttpServer())
       .patch(`/api/users/${other.body.id}`)
       .set('Authorization', `Bearer ${memberToken}`)

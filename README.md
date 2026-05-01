@@ -89,6 +89,7 @@ Perfis globais:
 
 - `ADMIN`: visao global, gerencia usuarios, secretarias, setores, pastas e projetos.
 - `MEMBER`: ve projetos em que participa, projetos que criou e projetos em pastas liberadas ao seu setor/secretaria.
+- usuarios possuem status `Ativo/Inativo`; inativos nao conseguem autenticar nem usar tokens existentes.
 
 Papeis dentro do projeto:
 
@@ -223,7 +224,8 @@ Para atualizar uma stack ja publicada:
 - o sistema possui suporte a cards arquivados e restauracao no board
 - o board foi refinado para usar drag-and-drop, checklist, comentarios/historico e cards compactos
 - a tela de projetos agrupa por secretaria, setor e pasta
-- a tela de usuarios permite vincular membros a secretarias/setores
+- a tela de usuarios permite buscar, filtrar, paginar, alterar status e vincular membros a secretarias/setores
+- secretarias e setores podem ser cadastrados pela tela de usuarios
 - a documentacao operacional detalhada da GTI esta sendo consolidada de forma privada no Notion
 
 ## Documentacao complementar

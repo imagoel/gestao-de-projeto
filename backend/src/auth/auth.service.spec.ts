@@ -36,6 +36,7 @@ describe('AuthService', () => {
       name: 'Admin',
       email: 'admin@empresa.com',
       role: UserRole.ADMIN,
+      isActive: true,
       avatarUrl: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -49,6 +50,7 @@ describe('AuthService', () => {
       name: user.name,
       email: user.email,
       role: user.role,
+      isActive: user.isActive,
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -75,6 +77,29 @@ describe('AuthService', () => {
       authService.login({
         email: 'admin@empresa.com',
         password: 'wrong-pass',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('throws for inactive users', async () => {
+    const passwordHash = await hash('admin123456', 10);
+    usersService.findByEmailWithPassword.mockResolvedValue({
+      id: 'user-1',
+      name: 'Admin',
+      email: 'admin@empresa.com',
+      role: UserRole.ADMIN,
+      isActive: false,
+      avatarUrl: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      sectorMemberships: [],
+      passwordHash,
+    });
+
+    await expect(
+      authService.login({
+        email: 'admin@empresa.com',
+        password: 'admin123456',
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });

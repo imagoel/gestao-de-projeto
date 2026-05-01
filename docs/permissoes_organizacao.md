@@ -35,6 +35,7 @@ Regras principais:
 - Gerencia secretarias, setores e pastas.
 - Cria projetos em qualquer pasta.
 - Pode editar e apagar projetos.
+- Pode ativar/inativar usuarios.
 
 ### MEMBER
 
@@ -103,9 +104,11 @@ O admin informa:
 - senha;
 - perfil global (`ADMIN` ou `MEMBER`);
 - avatar opcional;
+- status (`Ativo` ou `Inativo`);
 - setores vinculados.
 
 Os setores vinculados definem quais pastas e projetos o membro consegue visualizar por regra organizacional.
+Usuarios inativos nao conseguem fazer login e tokens existentes deixam de ser aceitos.
 
 ### Criacao de pasta
 
@@ -205,6 +208,7 @@ O admin inicial tambem e vinculado ao setor `GTI / GTI`.
 
 ```json
 {
+  "isActive": true,
   "sectorIds": ["uuid-do-setor"]
 }
 ```
@@ -245,6 +249,11 @@ A migration `20260430000100_add_organization_access`:
 - torna `projects.folder_id` obrigatorio;
 - atribui pastas e projetos legados ao fallback `GTI / GTI`;
 - remove `VIEWER` do enum `ProjectRole`, convertendo registros antigos para `MEMBER`.
+
+A migration `20260501000100_add_user_active_status`:
+
+- adiciona `users.is_active` com valor padrao `true`;
+- permite inativar usuarios sem exclusao fisica.
 
 ## Pontos de atencao
 
