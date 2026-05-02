@@ -68,6 +68,7 @@ model User {
   comments          Comment[]
   activityLogs      ActivityLog[]
   sectorMemberships UserSector[]
+  createdFolders    ProjectFolder[] @relation("ProjectFolderCreator")
 
   @@map("users")
 }
@@ -155,6 +156,9 @@ model ProjectFolder {
 
   sectorId String @map("sector_id")
   sector   Sector @relation(fields: [sectorId], references: [id], onDelete: Restrict)
+
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("ProjectFolderCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   projects Project[]
 

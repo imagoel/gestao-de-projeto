@@ -59,13 +59,21 @@ export class ProjectsController {
 
   @Roles(UserRole.ADMIN)
   @Post(':id/members')
-  addMember(@Param('id') id: string, @Body() addProjectMemberDto: AddProjectMemberDto) {
-    return this.projectsService.addMember(id, addProjectMemberDto);
+  addMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() addProjectMemberDto: AddProjectMemberDto,
+  ) {
+    return this.projectsService.addMember(user, id, addProjectMemberDto);
   }
 
   @Roles(UserRole.ADMIN)
   @Delete(':id/members/:userId')
-  removeMember(@Param('id') id: string, @Param('userId') userId: string) {
-    return this.projectsService.removeMember(id, userId);
+  removeMember(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.projectsService.removeMember(user, id, userId);
   }
 }

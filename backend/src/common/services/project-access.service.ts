@@ -78,10 +78,6 @@ export class ProjectAccessService {
   }
 
   async ensureProjectWriteAccess(user: AuthenticatedUser, projectId: string) {
-    if (user.role === UserRole.ADMIN) {
-      return;
-    }
-
     const project = await this.prisma.project.findFirst({
       where: this.buildProjectAccessWhere(user, projectId),
       select: {
@@ -100,6 +96,10 @@ export class ProjectAccessService {
 
     if (!project) {
       throw new ForbiddenException('Projeto indisponivel para este usuario.');
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      return;
     }
 
     if (project.ownerId === user.id) {
@@ -118,10 +118,6 @@ export class ProjectAccessService {
   }
 
   async ensureProjectDeleteAccess(user: AuthenticatedUser, projectId: string) {
-    if (user.role === UserRole.ADMIN) {
-      return;
-    }
-
     const project = await this.prisma.project.findFirst({
       where: this.buildProjectAccessWhere(user, projectId),
       select: {
@@ -142,6 +138,10 @@ export class ProjectAccessService {
       throw new ForbiddenException('Projeto indisponivel para este usuario.');
     }
 
+    if (user.role === UserRole.ADMIN) {
+      return;
+    }
+
     if (project.ownerId === user.id) {
       return;
     }
@@ -153,7 +153,7 @@ export class ProjectAccessService {
     }
 
     throw new ForbiddenException(
-      'Apenas o admin global ou participantes com perfil MANAGER podem apagar este projeto.',
+      'Apenas admins com acesso, owners ou participantes com perfil MANAGER podem apagar este projeto.',
     );
   }
 
@@ -185,10 +185,6 @@ export class ProjectAccessService {
     user: AuthenticatedUser,
     projectId?: string,
   ): Prisma.ProjectWhereInput {
-    if (user.role === UserRole.ADMIN) {
-      return projectId ? { id: projectId } : {};
-    }
-
     const restrictedWhere: Prisma.ProjectWhereInput = {
       OR: [
         { ownerId: user.id },
@@ -217,10 +213,6 @@ export class ProjectAccessService {
   }
 
   buildFolderAccessWhere(user: AuthenticatedUser): Prisma.ProjectFolderWhereInput {
-    if (user.role === UserRole.ADMIN) {
-      return {};
-    }
-
     return {
       OR: [
         {
@@ -267,10 +259,6 @@ export class ProjectAccessService {
 
     if (!existingFolder) {
       throw new NotFoundException('Pasta nao encontrada.');
-    }
-
-    if (user.role === UserRole.ADMIN) {
-      return existingFolder;
     }
 
     const accessibleFolder = await this.prisma.projectFolder.findFirst({

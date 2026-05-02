@@ -810,10 +810,33 @@ describe('Gestao GTI API (e2e)', () => {
     expect(projectAfter.body.folderId).toBe(defaultFolderId);
   });
 
-  it('lets members view authorized folders and blocks folder management', async () => {
-    const adminToken = await getAdminToken();
+  it('lets users create folders only in linked sectors and lets creators manage their own empty folders', async () => {
     const member = await createMember('pasta-membro@empresa.com', [defaultSectorId]);
     const memberToken = await getTokenForUser(member.email, 'membro1234');
+    const adminToken = await getAdminToken();
+    const otherSecretariat = await prisma.secretariat.create({
+      data: { name: 'SEMED' },
+    });
+    const otherSector = await prisma.sector.create({
+      data: {
+        name: 'PEDAGOGICO',
+        secretariatId: otherSecretariat.id,
+      },
+    });
+    const foreignOwner = await createMember('dono-outro-setor@empresa.com', [otherSector.id]);
+    const foreignFolder = await prisma.projectFolder.create({
+      data: {
+        name: 'Pasta de outro setor',
+        sectorId: otherSector.id,
+      },
+    });
+    const foreignProject = await prisma.project.create({
+      data: {
+        name: 'Projeto de outro setor',
+        ownerId: foreignOwner.id,
+        folderId: foreignFolder.id,
+      },
+    });
 
     const memberFoldersResponse = await request(app.getHttpServer())
       .get('/api/folders')
@@ -822,32 +845,59 @@ describe('Gestao GTI API (e2e)', () => {
 
     expect(memberFoldersResponse.body).toHaveLength(1);
 
-    // Member cannot create
+    const adminFoldersResponse = await request(app.getHttpServer())
+      .get('/api/folders')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(
+      adminFoldersResponse.body.some((folder: { id: string }) => folder.id === foreignFolder.id),
+    ).toBe(false);
+
+    const adminProjectsResponse = await request(app.getHttpServer())
+      .get('/api/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(
+      adminProjectsResponse.body.some(
+        (project: { id: string }) => project.id === foreignProject.id,
+      ),
+    ).toBe(false);
+
     await request(app.getHttpServer())
+      .post('/api/folders')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Pasta admin indevida', sectorId: otherSector.id })
+      .expect(403);
+
+    const folderResponse = await request(app.getHttpServer())
       .post('/api/folders')
       .set('Authorization', `Bearer ${memberToken}`)
       .send({ name: 'Pasta', sectorId: defaultSectorId })
-      .expect(403);
-
-    // Admin creates one
-    const folderResponse = await request(app.getHttpServer())
-      .post('/api/folders')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Pasta admin', sectorId: defaultSectorId })
       .expect(201);
 
-    // Member cannot rename
+    expect(folderResponse.body.sectorId).toBe(defaultSectorId);
+    expect(folderResponse.body.createdById).toBe(member.id);
+
     await request(app.getHttpServer())
+      .post('/api/folders')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .send({ name: 'Pasta indevida', sectorId: otherSector.id })
+      .expect(403);
+
+    const renamedFolder = await request(app.getHttpServer())
       .patch(`/api/folders/${folderResponse.body.id}`)
       .set('Authorization', `Bearer ${memberToken}`)
       .send({ name: 'Renomeada' })
-      .expect(403);
+      .expect(200);
 
-    // Member cannot delete
+    expect(renamedFolder.body.name).toBe('Renomeada');
+
     await request(app.getHttpServer())
       .delete(`/api/folders/${folderResponse.body.id}`)
       .set('Authorization', `Bearer ${memberToken}`)
-      .expect(403);
+      .expect(200, { success: true });
   });
 
   it('lets the logged-in user change their own password', async () => {

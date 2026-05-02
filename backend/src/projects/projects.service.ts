@@ -226,8 +226,13 @@ export class ProjectsService {
     return { success: true };
   }
 
-  async addMember(projectId: string, addProjectMemberDto: AddProjectMemberDto) {
+  async addMember(
+    currentUser: AuthenticatedUser,
+    projectId: string,
+    addProjectMemberDto: AddProjectMemberDto,
+  ) {
     const project = await this.projectAccessService.ensureProjectExists(projectId);
+    await this.projectAccessService.ensureProjectWriteAccess(currentUser, projectId);
 
     await this.usersService.ensureUsersExist([addProjectMemberDto.userId]);
 
@@ -262,8 +267,9 @@ export class ProjectsService {
     });
   }
 
-  async removeMember(projectId: string, userId: string) {
+  async removeMember(currentUser: AuthenticatedUser, projectId: string, userId: string) {
     const project = await this.projectAccessService.ensureProjectExists(projectId);
+    await this.projectAccessService.ensureProjectWriteAccess(currentUser, projectId);
 
     if (project.ownerId === userId) {
       throw new BadRequestException('O owner do projeto nao pode ser removido da equipe.');

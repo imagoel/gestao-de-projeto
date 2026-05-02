@@ -80,12 +80,6 @@ export function ProjectsPage() {
     enabled: Boolean(token),
   });
 
-  const secretariatsQuery = useQuery({
-    queryKey: ['secretariats'],
-    queryFn: () => api.getSecretariats(token!),
-    enabled: Boolean(token && isAdmin),
-  });
-
   const usersQuery = useQuery({
     queryKey: ['users', 'project-form'],
     queryFn: () => api.getUsers(token!),
@@ -114,12 +108,14 @@ export function ProjectsPage() {
 
   const availableUsers = usersQuery.data ?? [];
   const folderOptions = foldersQuery.data ?? [];
-  const availableSectors = (secretariatsQuery.data ?? []).flatMap((secretariat) =>
-    secretariat.sectors.map((sector) => ({
-      ...sector,
-      secretariat,
-    })),
-  );
+  const availableSectors =
+    user?.sectorMemberships?.map((membership) => ({
+      id: membership.sector.id,
+      name: membership.sector.name,
+      secretariat: membership.sector.secretariat,
+    })) ?? [];
+  const userSectorIds = new Set(availableSectors.map((sector) => sector.id));
+  const canCreateFolder = availableSectors.length > 0;
 
   const visibleFolders = useMemo(() => {
     const foldersById = new Map<string, ProjectFolder>();
@@ -282,6 +278,10 @@ export function ProjectsPage() {
     await createProjectMutation.mutateAsync();
   }
 
+  function canManageFolder(folder: ProjectFolder) {
+    return folder.createdById === user?.id || (isAdmin && userSectorIds.has(folder.sectorId));
+  }
+
   function renderProjectCard(project: Project) {
     return (
       <article
@@ -331,7 +331,7 @@ export function ProjectsPage() {
 
   const action = (
     <div className="page-header-actions">
-      {isAdmin ? (
+      {canCreateFolder ? (
         <button
           className="secondary-button"
           onClick={() => {
@@ -359,6 +359,7 @@ export function ProjectsPage() {
     const isOpen = openFolders.has(key);
     const isDragOver = dragOverKey === key;
     const targetFolderId = folder.id;
+    const canManageThisFolder = canManageFolder(folder);
 
     function handleDrop(e: DragEvent) {
       e.preventDefault();
@@ -399,7 +400,7 @@ export function ProjectsPage() {
               {folder.visibility === 'SECRETARIAT' ? 'Secretaria' : 'Setor'}
             </span>
           </button>
-          {isAdmin ? (
+          {canManageThisFolder ? (
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 className="text-button"
@@ -468,7 +469,7 @@ export function ProjectsPage() {
       ) : null}
 
       {!projectsQuery.isLoading && !projectsQuery.isError ? (
-        projectsQuery.data && projectsQuery.data.length > 0 ? (
+        visibleFolders.length > 0 ? (
           <div className="organization-list">
             {organizationGroups.map((secretariat) => (
               <div className="secretariat-section" key={secretariat.id}>
@@ -547,7 +548,7 @@ export function ProjectsPage() {
 
       <Modal
         title="Nova pasta"
-        description="Pastas agora pertencem a um setor e controlam quem consegue visualizar os projetos."
+        description="Pastas pertencem a um setor. Membros criam pastas apenas nos setores vinculados ao proprio usuario."
         open={isCreateFolderOpen}
         onClose={() => setIsCreateFolderOpen(false)}
         footer={

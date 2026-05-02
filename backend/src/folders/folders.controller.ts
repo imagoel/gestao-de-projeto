@@ -8,10 +8,8 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -29,21 +27,22 @@ export class FoldersController {
     return this.foldersService.findAll(user);
   }
 
-  @Roles(UserRole.ADMIN)
   @Post()
-  create(@Body() dto: CreateFolderDto) {
-    return this.foldersService.create(dto);
+  create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateFolderDto) {
+    return this.foldersService.create(user, dto);
   }
 
-  @Roles(UserRole.ADMIN)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateFolderDto) {
-    return this.foldersService.update(id, dto);
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateFolderDto,
+  ) {
+    return this.foldersService.update(user, id, dto);
   }
 
-  @Roles(UserRole.ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.foldersService.remove(id);
+  remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.foldersService.remove(user, id);
   }
 }

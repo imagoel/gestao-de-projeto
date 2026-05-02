@@ -62,7 +62,7 @@ No contexto da GTI, este repositorio representa um projeto-produto: ele e o sist
   - `A fazer`
   - `Em andamento`
   - `Concluido`
-- `ADMIN` cria projetos e gerencia usuarios
+- `ADMIN` gerencia usuarios e cria projetos em pastas dos setores vinculados ao proprio usuario
 - `MEMBER` acessa projetos por participacao direta ou por pasta liberada ao seu setor/secretaria
 - acesso por setor/pasta sem participacao no projeto e somente leitura
 - edicao de cards, checklist, comentarios e colunas exige participacao no projeto
@@ -87,9 +87,10 @@ Cada projeto pertence obrigatoriamente a uma pasta. A pasta pertence a um setor 
 
 Perfis globais:
 
-- `ADMIN`: visao global, gerencia usuarios, secretarias, setores, pastas e projetos.
+- `ADMIN`: gerencia usuarios, secretarias e setores; em projetos e pastas, opera apenas os setores vinculados ao proprio usuario.
 - `MEMBER`: ve projetos em que participa, projetos que criou e projetos em pastas liberadas ao seu setor/secretaria.
 - usuarios possuem status `Ativo/Inativo`; inativos nao conseguem autenticar nem usar tokens existentes.
+- membros podem criar pastas apenas nos setores vinculados ao proprio usuario.
 
 Papeis dentro do projeto:
 
@@ -100,6 +101,8 @@ Observacoes:
 
 - `VIEWER` foi removido do modelo. A leitura sem edicao agora vem da visibilidade por pasta/setor.
 - Usuario que enxerga um projeto somente por setor/pasta nao consegue editar cards nem comentar ate ser adicionado como membro do projeto.
+- O criador da pasta pode renomear ou apagar a propria pasta enquanto ela estiver vazia.
+- Admins podem criar, renomear e apagar pastas apenas nos setores aos quais tambem estejam vinculados.
 - O owner do projeto e criado como `MANAGER`.
 
 ## Como rodar localmente

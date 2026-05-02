@@ -79,6 +79,8 @@ export interface ProjectFolder {
   visibility: FolderVisibility;
   sectorId: string;
   sector: SectorSummary;
+  createdById?: string | null;
+  createdBy?: ApiUser | null;
   createdAt: string;
 }
 

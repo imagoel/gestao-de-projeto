@@ -30,11 +30,10 @@ Regras principais:
 
 ### ADMIN
 
-- Ve todos os projetos, pastas, setores e secretarias.
-- Gerencia usuarios.
-- Gerencia secretarias, setores e pastas.
-- Cria projetos em qualquer pasta.
-- Pode editar e apagar projetos.
+- Ve e gerencia usuarios, setores e secretarias.
+- Em projetos e pastas, ve e opera apenas os setores vinculados ao proprio usuario.
+- Cria pastas e projetos nos setores/pastas que consegue acessar.
+- Pode editar e apagar projetos acessiveis.
 - Pode ativar/inativar usuarios.
 
 ### MEMBER
@@ -43,6 +42,7 @@ Regras principais:
 - Ve projetos em que participa.
 - Ve projetos que criou.
 - Ve projetos em pastas liberadas para seus setores ou secretarias.
+- Pode criar pastas nos setores aos quais esta vinculado.
 - Pode criar projeto em pasta que consegue acessar.
 - So edita cards, checklist, comentarios e colunas quando tambem participa do projeto.
 
@@ -81,16 +81,14 @@ Se o usuario precisa editar, ele deve ser adicionado ao projeto como `MEMBER` ou
 
 A pasta fica visivel apenas para:
 
-- admins;
-- usuarios vinculados ao mesmo setor da pasta;
+- usuarios vinculados ao mesmo setor da pasta, incluindo admins vinculados ao setor;
 - participantes diretos de projetos dentro da pasta, quando o projeto e retornado por participacao.
 
 ### SECRETARIAT
 
 A pasta fica visivel para:
 
-- admins;
-- usuarios vinculados a qualquer setor da mesma secretaria da pasta;
+- usuarios vinculados a qualquer setor da mesma secretaria da pasta, incluindo admins vinculados a essa secretaria por setor;
 - participantes diretos de projetos dentro da pasta.
 
 ## Fluxos principais
@@ -112,11 +110,15 @@ Usuarios inativos nao conseguem fazer login e tokens existentes deixam de ser ac
 
 ### Criacao de pasta
 
-O admin informa:
+O usuario com acesso ao setor informa:
 
 - nome da pasta;
 - setor;
 - visibilidade (`SECTOR` ou `SECRETARIAT`).
+
+Membros tambem podem criar pastas, mas apenas em setores vinculados ao proprio usuario.
+O criador da pasta pode renomear ou apagar a propria pasta enquanto ela estiver vazia.
+Admins tambem podem renomear ou apagar pastas vazias, mas apenas em setores vinculados ao proprio usuario.
 
 Pastas com projetos nao podem ser apagadas.
 
@@ -136,14 +138,14 @@ Membros adicionais entram como `MEMBER` por padrao.
 
 Um usuario pode abrir um projeto se:
 
-- for admin;
 - for owner;
 - for membro do projeto;
 - tiver acesso a pasta do projeto pelo setor/secretaria.
+- for admin com acesso ao setor/secretaria da pasta.
 
 Um usuario so pode editar o projeto/cards se:
 
-- for admin;
+- for admin com acesso ao projeto;
 - for owner;
 - for `MANAGER`;
 - for `MEMBER` do projeto.
@@ -254,6 +256,17 @@ A migration `20260501000100_add_user_active_status`:
 
 - adiciona `users.is_active` com valor padrao `true`;
 - permite inativar usuarios sem exclusao fisica.
+
+A migration `20260502000100_add_folder_creator`:
+
+- adiciona `project_folders.created_by_id`;
+- registra o criador de novas pastas;
+- permite que o criador gerencie a propria pasta vazia sem depender de perfil global `ADMIN`.
+
+A migration `20260502000200_link_admins_to_gti_sector`:
+
+- vincula admins existentes ao setor padrao `GTI / GTI`;
+- evita que admins antigos fiquem sem acesso operacional apos a regra de admin por setor.
 
 ## Pontos de atencao
 
