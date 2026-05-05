@@ -55,12 +55,18 @@ textarea {
 .app-shell {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
   min-height: 100vh;
 }
 
 .app-sidebar {
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
   border-right: 1px solid #d4d1c7;
   background: #efede5;
 }
@@ -511,6 +517,7 @@ textarea {
 .board-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: start;
   gap: 14px;
 }
 
@@ -523,12 +530,21 @@ textarea {
 .board-column-body {
   display: grid;
   gap: 8px;
+  max-height: calc(100vh - 230px);
   min-height: 84px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 2px 0 0;
   border: 0;
   border-radius: 0;
   background: transparent;
+  scrollbar-width: none;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.board-column-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .board-column-body-active {
@@ -1536,6 +1552,10 @@ textarea {
   }
 
   .app-sidebar {
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
     border-right: 0;
     border-bottom: 1px solid #d4d1c7;
   }
@@ -1543,6 +1563,12 @@ textarea {
   .board-grid,
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .board-column-body {
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
   }
 
   .users-toolbar {
