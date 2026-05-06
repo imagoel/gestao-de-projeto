@@ -1,9 +1,11 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type DragEvent,
   type FormEvent,
+  type WheelEvent,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
@@ -138,6 +140,11 @@ export function ProjectBoardPage() {
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [columnError, setColumnError] = useState<string | null>(null);
+  const [scrollLimitFeedback, setScrollLimitFeedback] = useState<{
+    columnId: string;
+    edge: "top" | "bottom";
+  } | null>(null);
+  const scrollLimitFeedbackTimeout = useRef<number | null>(null);
 
   const projectQuery = useQuery({
     queryKey: ["project", projectId],
@@ -233,6 +240,14 @@ export function ProjectBoardPage() {
     setEditError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardQuery.data?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollLimitFeedbackTimeout.current) {
+        window.clearTimeout(scrollLimitFeedbackTimeout.current);
+      }
+    };
+  }, []);
 
   const createCardMutation = useMutation({
     mutationFn: () =>
@@ -789,9 +804,52 @@ export function ProjectBoardPage() {
   }
 
   function getColumnBodyClassName(columnId: string) {
-    return dropTarget?.columnId === columnId
-      ? "board-column-body board-column-body-active"
-      : "board-column-body";
+    const classNames = ["board-column-body"];
+
+    if (dropTarget?.columnId === columnId) {
+      classNames.push("board-column-body-active");
+    }
+
+    if (scrollLimitFeedback?.columnId === columnId) {
+      classNames.push(`board-column-scroll-limit-${scrollLimitFeedback.edge}`);
+    }
+
+    return classNames.join(" ");
+  }
+
+  function showColumnScrollLimit(columnId: string, edge: "top" | "bottom") {
+    setScrollLimitFeedback({ columnId, edge });
+
+    if (scrollLimitFeedbackTimeout.current) {
+      window.clearTimeout(scrollLimitFeedbackTimeout.current);
+    }
+
+    scrollLimitFeedbackTimeout.current = window.setTimeout(() => {
+      setScrollLimitFeedback((current) =>
+        current?.columnId === columnId && current.edge === edge ? null : current,
+      );
+    }, 420);
+  }
+
+  function handleColumnWheel(event: WheelEvent<HTMLDivElement>, columnId: string) {
+    const element = event.currentTarget;
+    const hasScrollableContent = element.scrollHeight > element.clientHeight + 1;
+
+    if (!hasScrollableContent) {
+      return;
+    }
+
+    const isAtTop = element.scrollTop <= 0;
+    const isAtBottom =
+      element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
+
+    if (event.deltaY < 0 && isAtTop) {
+      showColumnScrollLimit(columnId, "top");
+    }
+
+    if (event.deltaY > 0 && isAtBottom) {
+      showColumnScrollLimit(columnId, "bottom");
+    }
   }
 
   return (
@@ -1011,6 +1069,7 @@ export function ProjectBoardPage() {
                   className={getColumnBodyClassName(column.id)}
                   onDragOver={(event) => handleColumnDragOver(event, column)}
                   onDrop={(event) => void handleColumnDrop(event, column)}
+                  onWheel={(event) => handleColumnWheel(event, column.id)}
                 >
                   {column.cards.length > 0 ? (
                     <>
