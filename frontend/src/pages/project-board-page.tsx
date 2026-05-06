@@ -641,6 +641,11 @@ export function ProjectBoardPage() {
     (column) => column.id === cardQuery.data?.columnId,
   )?.title;
   const checklistItems = checklistQuery.data ?? [];
+  const checklistReferences = checklistItems.map((item, index) => ({
+    done: item.done,
+    number: index + 1,
+    title: item.title,
+  }));
   const checklistErrorMessage =
     checklistError ??
     (checklistQuery.error instanceof Error
@@ -1619,6 +1624,7 @@ export function ProjectBoardPage() {
               </div>
 
               <CardCommentsSection
+                checklistReferences={checklistReferences}
                 comments={cardDescriptions}
                 emptyStateCopy="Nenhuma descricao registrada ainda. Use esta area para contexto, andamento e observacoes do card."
                 errorMessage={cardDescriptionErrorMessage}

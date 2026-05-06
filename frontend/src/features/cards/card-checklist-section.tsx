@@ -154,7 +154,7 @@ export function CardChecklistSection({
         onDragOver={handleListDragOver}
         onDrop={(event) => void handleListDrop(event)}
       >
-        {items.map((item) => {
+        {items.map((item, index) => {
           const isEditing = editingItemId === item.id;
           const visibleIndex = items
             .filter((candidate) => candidate.id !== dragItemId)
@@ -189,6 +189,13 @@ export function CardChecklistSection({
                   onChange={() => void onToggle(item)}
                   type="checkbox"
                 />
+                <span
+                  aria-label={`Checklist ${index + 1}`}
+                  className="checklist-number"
+                  title={`Referencia @${index + 1}`}
+                >
+                  {index + 1}
+                </span>
                 {isEditing ? (
                   <input
                     className="field-input checklist-inline-input"

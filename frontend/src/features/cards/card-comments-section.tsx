@@ -3,10 +3,17 @@ import { useState } from 'react';
 import { formatDateTime } from '../../app/formatters';
 import type { CardComment } from '../../types/api';
 
+type ChecklistReference = {
+  done: boolean;
+  number: number;
+  title: string;
+};
+
 type CardCommentsSectionProps = {
   comments: CardComment[];
   isBusy: boolean;
   isLoading: boolean;
+  checklistReferences?: ChecklistReference[];
   errorMessage?: string | null;
   emptyStateCopy?: string;
   fieldLabel?: string;
@@ -23,6 +30,7 @@ export function CardCommentsSection({
   comments,
   isBusy,
   isLoading,
+  checklistReferences = [],
   errorMessage,
   emptyStateCopy = 'Nenhum comentario ainda. Registre contexto e combinados do card aqui.',
   fieldLabel = 'Novo comentario',
@@ -35,6 +43,9 @@ export function CardCommentsSection({
   onCreate,
 }: CardCommentsSectionProps) {
   const [draftComment, setDraftComment] = useState('');
+  const referencesByNumber = new Map(
+    checklistReferences.map((reference) => [reference.number, reference]),
+  );
 
   async function handleCreate() {
     const content = draftComment.trim();
@@ -45,6 +56,36 @@ export function CardCommentsSection({
 
     await onCreate(content);
     setDraftComment('');
+  }
+
+  function renderContent(content: string) {
+    return content.split(/(@\d+)/g).map((part, index) => {
+      const match = /^@(\d+)$/.exec(part);
+
+      if (!match) {
+        return part;
+      }
+
+      const reference = referencesByNumber.get(Number(match[1]));
+
+      if (!reference) {
+        return part;
+      }
+
+      return (
+        <span
+          className={
+            reference.done
+              ? 'checklist-reference checklist-reference-done'
+              : 'checklist-reference'
+          }
+          key={`${part}-${index}`}
+          title={`Checklist ${reference.number}: ${reference.title}`}
+        >
+          {part}
+        </span>
+      );
+    });
   }
 
   return (
@@ -63,7 +104,7 @@ export function CardCommentsSection({
               <strong>{comment.author.name}</strong>
               <span>{formatDateTime(comment.createdAt)}</span>
             </div>
-            <p className="comment-content">{comment.content}</p>
+            <p className="comment-content">{renderContent(comment.content)}</p>
           </article>
         ))}
 
@@ -87,6 +128,11 @@ export function CardCommentsSection({
           rows={3}
           value={draftComment}
         />
+        {checklistReferences.length > 0 ? (
+          <p className="field-helper">
+            Use @1, @2, @3... para referenciar itens do checklist.
+          </p>
+        ) : null}
         <div className="inline-form inline-form-end">
           <button
             className="secondary-button"
