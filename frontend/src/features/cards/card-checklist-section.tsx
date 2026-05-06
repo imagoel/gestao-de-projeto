@@ -68,8 +68,21 @@ export function CardChecklistSection({
     return targetIndex === -1 ? visibleItems.length : targetIndex;
   }
 
-  function handleDragStart(itemId: string) {
+  function shouldIgnoreDragStart(target: EventTarget | null) {
+    return (
+      target instanceof HTMLElement &&
+      Boolean(target.closest('input, button, textarea, select'))
+    );
+  }
+
+  function handleDragStart(event: DragEvent<HTMLDivElement>, itemId: string) {
     if (isBusy || readOnly) {
+      event.preventDefault();
+      return;
+    }
+
+    if (shouldIgnoreDragStart(event.target)) {
+      event.preventDefault();
       return;
     }
 
@@ -166,7 +179,8 @@ export function CardChecklistSection({
               draggable={!isBusy && !readOnly && !isEditing}
               key={item.id}
               onDragEnd={handleDragEnd}
-              onDragStart={() => handleDragStart(item.id)}
+              onDragStart={(event) => handleDragStart(event, item.id)}
+              title={!readOnly && !isEditing ? 'Arraste para reordenar' : undefined}
             >
               <label className="checklist-main">
                 <input
@@ -224,9 +238,6 @@ export function CardChecklistSection({
                   </>
                 ) : (
                   <>
-                    {!readOnly ? (
-                      <span className="checklist-drag-hint">Arrastar</span>
-                    ) : null}
                     <button
                       className="text-button text-button-danger"
                       disabled={isBusy || readOnly}

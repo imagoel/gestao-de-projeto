@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from 'react';
+import { useMemo, useState, type DragEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -127,15 +127,6 @@ export function ProjectsPage() {
     });
     return Array.from(foldersById.values());
   }, [folderOptions, projectsQuery.data]);
-
-  useEffect(() => {
-    if (visibleFolders.length === 0) return;
-    setOpenFolders((current) => {
-      const next = new Set(current);
-      visibleFolders.forEach((folder) => next.add(folder.id));
-      return next;
-    });
-  }, [visibleFolders]);
 
   const groupedProjects = useMemo(() => {
     const projects = projectsQuery.data ?? [];

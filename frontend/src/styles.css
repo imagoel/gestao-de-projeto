@@ -528,6 +528,8 @@ textarea {
 }
 
 .board-column-body {
+  --board-scroll-hint-shadow: none;
+  --board-scroll-limit-shadow: none;
   display: grid;
   gap: 8px;
   max-height: calc(100vh - 230px);
@@ -539,6 +541,7 @@ textarea {
   border-radius: 0;
   background: transparent;
   scrollbar-width: none;
+  box-shadow: var(--board-scroll-hint-shadow), var(--board-scroll-limit-shadow);
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.22s ease;
 }
 
@@ -551,12 +554,16 @@ textarea {
   background: transparent;
 }
 
+.board-column-has-more-bottom {
+  --board-scroll-hint-shadow: inset 0 -26px 22px -28px rgba(51, 154, 128, 0.42);
+}
+
 .board-column-scroll-limit-top {
-  box-shadow: inset 0 18px 18px -20px rgba(24, 95, 165, 0.7);
+  --board-scroll-limit-shadow: inset 0 18px 18px -20px rgba(24, 95, 165, 0.7);
 }
 
 .board-column-scroll-limit-bottom {
-  box-shadow: inset 0 -18px 18px -20px rgba(24, 95, 165, 0.7);
+  --board-scroll-limit-shadow: inset 0 -18px 18px -20px rgba(24, 95, 165, 0.7);
 }
 
 .board-inline-note,
@@ -1424,6 +1431,26 @@ textarea {
   background: #fbfaf7;
 }
 
+.checklist-item[draggable="true"] {
+  cursor: grab;
+}
+
+.checklist-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.checklist-item input,
+.checklist-item button,
+.checklist-item textarea,
+.checklist-item select {
+  cursor: auto;
+}
+
+.checklist-item input[type="checkbox"],
+.checklist-item button {
+  cursor: pointer;
+}
+
 .checklist-item-dragging {
   opacity: 0.55;
 }
@@ -1457,12 +1484,6 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-.checklist-drag-hint {
-  font-size: 0.8rem;
-  color: #6f6b63;
-  cursor: grab;
 }
 
 .checklist-inline-input {
@@ -1577,6 +1598,7 @@ textarea {
     max-height: none;
     overflow-y: visible;
     overscroll-behavior: auto;
+    box-shadow: none;
   }
 
   .users-toolbar {

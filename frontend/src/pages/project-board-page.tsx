@@ -5,6 +5,7 @@ import {
   useState,
   type DragEvent,
   type FormEvent,
+  type UIEvent,
   type WheelEvent,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -144,6 +145,10 @@ export function ProjectBoardPage() {
     columnId: string;
     edge: "top" | "bottom";
   } | null>(null);
+  const [columnScrollHints, setColumnScrollHints] = useState<Record<string, boolean>>(
+    {},
+  );
+  const columnBodyRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const scrollLimitFeedbackTimeout = useRef<number | null>(null);
 
   const projectQuery = useQuery({
@@ -248,6 +253,17 @@ export function ProjectBoardPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      columnBodyRefs.current.forEach((element, columnId) => {
+        updateColumnScrollHint(element, columnId);
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns]);
 
   const createCardMutation = useMutation({
     mutationFn: () =>
@@ -814,7 +830,39 @@ export function ProjectBoardPage() {
       classNames.push(`board-column-scroll-limit-${scrollLimitFeedback.edge}`);
     }
 
+    if (columnScrollHints[columnId]) {
+      classNames.push("board-column-has-more-bottom");
+    }
+
     return classNames.join(" ");
+  }
+
+  function updateColumnScrollHint(element: HTMLDivElement, columnId: string) {
+    const hasScrollableContent = element.scrollHeight > element.clientHeight + 1;
+    const hasMoreBelow =
+      hasScrollableContent &&
+      element.scrollTop + element.clientHeight < element.scrollHeight - 1;
+
+    setColumnScrollHints((current) => {
+      if (current[columnId] === hasMoreBelow) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [columnId]: hasMoreBelow,
+      };
+    });
+  }
+
+  function registerColumnBody(columnId: string, element: HTMLDivElement | null) {
+    if (!element) {
+      columnBodyRefs.current.delete(columnId);
+      return;
+    }
+
+    columnBodyRefs.current.set(columnId, element);
+    window.requestAnimationFrame(() => updateColumnScrollHint(element, columnId));
   }
 
   function showColumnScrollLimit(columnId: string, edge: "top" | "bottom") {
@@ -850,6 +898,10 @@ export function ProjectBoardPage() {
     if (event.deltaY > 0 && isAtBottom) {
       showColumnScrollLimit(columnId, "bottom");
     }
+  }
+
+  function handleColumnScroll(event: UIEvent<HTMLDivElement>, columnId: string) {
+    updateColumnScrollHint(event.currentTarget, columnId);
   }
 
   return (
@@ -1069,7 +1121,9 @@ export function ProjectBoardPage() {
                   className={getColumnBodyClassName(column.id)}
                   onDragOver={(event) => handleColumnDragOver(event, column)}
                   onDrop={(event) => void handleColumnDrop(event, column)}
+                  onScroll={(event) => handleColumnScroll(event, column.id)}
                   onWheel={(event) => handleColumnWheel(event, column.id)}
+                  ref={(element) => registerColumnBody(column.id, element)}
                 >
                   {column.cards.length > 0 ? (
                     <>
