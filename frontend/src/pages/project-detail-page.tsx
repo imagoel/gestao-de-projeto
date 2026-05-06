@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../app/auth-provider';
 import {
   formatLongDate,
+  formatProjectRole,
   formatProjectStatus,
   getProjectStatusTone,
 } from '../app/formatters';
@@ -36,7 +37,7 @@ export function ProjectDetailPage() {
   const usersQuery = useQuery({
     queryKey: ['users'],
     queryFn: () => api.getUsers(token!),
-    enabled: Boolean(token && user?.role === 'ADMIN' && isAddMemberOpen),
+    enabled: Boolean(token && isAddMemberOpen),
   });
 
   const deleteProjectMutation = useMutation({
@@ -104,13 +105,12 @@ export function ProjectDetailPage() {
   const currentProjectMember = project?.members.find(
     (member) => member.user.id === user?.id,
   );
-  const canEditProject = Boolean(
+  const canManageProject = Boolean(
     user &&
       project &&
       (user.role === 'ADMIN' ||
         project.ownerId === user.id ||
-        currentProjectMember?.role === 'MANAGER' ||
-        currentProjectMember?.role === 'MEMBER'),
+        currentProjectMember?.role === 'MANAGER'),
   );
   const canDeleteProject = Boolean(
     user &&
@@ -151,7 +151,7 @@ export function ProjectDetailPage() {
       <Link className="secondary-button" to="/projetos">
         Voltar aos projetos
       </Link>
-      {canEditProject ? (
+      {canManageProject ? (
         <button
           className="secondary-button"
           onClick={openEditDescriptionModal}
@@ -272,8 +272,8 @@ export function ProjectDetailPage() {
       </Modal>
 
       <Modal
-        title="Adicionar membro"
-        description="Selecione o usuario e o papel no projeto."
+        title="Adicionar participante"
+        description="Selecione o usuario e defina se ele sera membro ou visualizador do projeto."
         open={isAddMemberOpen}
         onClose={() => setIsAddMemberOpen(false)}
         footer={
@@ -291,7 +291,7 @@ export function ProjectDetailPage() {
               onClick={() => void addMemberMutation.mutateAsync()}
               type="button"
             >
-              {addMemberMutation.isPending ? 'Adicionando...' : 'Adicionar'}
+              {addMemberMutation.isPending ? 'Adicionando...' : 'Adicionar participante'}
             </button>
           </>
         }
@@ -330,8 +330,8 @@ export function ProjectDetailPage() {
               onChange={(e) => setAddMemberRole(e.target.value as ProjectRole)}
               value={addMemberRole}
             >
-              <option value="MANAGER">Manager</option>
-              <option value="MEMBER">Member</option>
+              <option value="MEMBER">Membro</option>
+              <option value="VIEWER">Visualizador</option>
             </select>
           </div>
           {memberError ? <p className="form-error">{memberError}</p> : null}
@@ -344,7 +344,7 @@ export function ProjectDetailPage() {
             <div className="info-row">
               <div className="info-label-row">
                 <span className="info-label">Descricao</span>
-                {canEditProject ? (
+                {canManageProject ? (
                   <button
                     className="text-button inline-edit-button"
                     onClick={openEditDescriptionModal}
@@ -359,7 +359,7 @@ export function ProjectDetailPage() {
               </span>
             </div>
             <div className="info-row">
-              <span className="info-label">Owner</span>
+              <span className="info-label">Dono</span>
               <span className="info-value">{project.owner.name}</span>
             </div>
             <div className="info-row">
@@ -373,9 +373,9 @@ export function ProjectDetailPage() {
                   <span className="member-pill" key={member.id}>
                     {member.user.name}
                     <small style={{ marginLeft: 4, color: '#6f6b63' }}>
-                      ({member.role})
+                      ({formatProjectRole(member.role)})
                     </small>
-                    {user?.role === 'ADMIN' &&
+                    {canManageProject &&
                     member.user.id !== project.ownerId ? (
                       <button
                         className="text-button"
@@ -400,7 +400,7 @@ export function ProjectDetailPage() {
                   </span>
                 ))}
               </div>
-              {user?.role === 'ADMIN' ? (
+              {canManageProject ? (
                 <button
                   className="secondary-button"
                   onClick={() => {
@@ -410,7 +410,7 @@ export function ProjectDetailPage() {
                   style={{ marginTop: 8, justifySelf: 'start' }}
                   type="button"
                 >
-                  Adicionar membro
+                  Adicionar participante
                 </button>
               ) : null}
             </div>
@@ -426,7 +426,7 @@ export function ProjectDetailPage() {
                 <Link className="secondary-button" to="/projetos">
                   Voltar
                 </Link>
-                {canEditProject ? (
+                {canManageProject ? (
                   <button
                     className="secondary-button"
                     onClick={openEditDescriptionModal}

@@ -25,6 +25,7 @@ enum UserRole {
 enum ProjectRole {
   MANAGER // pode editar o projeto e gerenciar membros
   MEMBER // pode mover cards e comentar
+  VIEWER // pode visualizar o projeto sem alterar cards
 }
 
 enum ProjectStatus {

@@ -80,7 +80,7 @@ export class ProjectsService {
   }
 
   async create(currentUser: AuthenticatedUser, createProjectDto: CreateProjectDto) {
-    // Members can only create projects owned by themselves; admins can pick any owner.
+    // Membros criam projetos para si; admins podem escolher outro dono.
     const ownerId =
       currentUser.role === UserRole.ADMIN
         ? (createProjectDto.ownerId ?? currentUser.id)
@@ -95,7 +95,7 @@ export class ProjectsService {
     });
 
     if (!owner) {
-      throw new NotFoundException('Owner do projeto nao encontrado.');
+      throw new NotFoundException('Dono do projeto nao encontrado.');
     }
 
     await this.projectAccessService.ensureFolderAccess(
@@ -157,7 +157,7 @@ export class ProjectsService {
     updateProjectDto: UpdateProjectDto,
   ) {
     const project = await this.projectAccessService.ensureProjectExists(id);
-    await this.projectAccessService.ensureProjectWriteAccess(currentUser, id);
+    await this.projectAccessService.ensureProjectManageAccess(currentUser, id);
 
     if (updateProjectDto.ownerId) {
       await this.usersService.ensureUsersExist([updateProjectDto.ownerId]);
@@ -232,7 +232,7 @@ export class ProjectsService {
     addProjectMemberDto: AddProjectMemberDto,
   ) {
     const project = await this.projectAccessService.ensureProjectExists(projectId);
-    await this.projectAccessService.ensureProjectWriteAccess(currentUser, projectId);
+    await this.projectAccessService.ensureProjectManageAccess(currentUser, projectId);
 
     await this.usersService.ensureUsersExist([addProjectMemberDto.userId]);
 
@@ -248,6 +248,12 @@ export class ProjectsService {
 
     if (existingMember) {
       throw new ConflictException('Usuario ja participa deste projeto.');
+    }
+
+    if (addProjectMemberDto.role === ProjectRole.MANAGER) {
+      throw new BadRequestException(
+        'Novos participantes devem ser adicionados como membro ou visualizador.',
+      );
     }
 
     return this.prisma.projectMember.create({
@@ -269,10 +275,10 @@ export class ProjectsService {
 
   async removeMember(currentUser: AuthenticatedUser, projectId: string, userId: string) {
     const project = await this.projectAccessService.ensureProjectExists(projectId);
-    await this.projectAccessService.ensureProjectWriteAccess(currentUser, projectId);
+    await this.projectAccessService.ensureProjectManageAccess(currentUser, projectId);
 
     if (project.ownerId === userId) {
-      throw new BadRequestException('O owner do projeto nao pode ser removido da equipe.');
+      throw new BadRequestException('O dono do projeto nao pode ser removido da equipe.');
     }
 
     const member = await this.prisma.projectMember.findUnique({

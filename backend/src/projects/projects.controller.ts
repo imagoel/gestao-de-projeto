@@ -8,10 +8,8 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -57,7 +55,6 @@ export class ProjectsController {
     return this.projectsService.remove(user, id);
   }
 
-  @Roles(UserRole.ADMIN)
   @Post(':id/members')
   addMember(
     @CurrentUser() user: AuthenticatedUser,
@@ -67,7 +64,6 @@ export class ProjectsController {
     return this.projectsService.addMember(user, id, addProjectMemberDto);
   }
 
-  @Roles(UserRole.ADMIN)
   @Delete(':id/members/:userId')
   removeMember(
     @CurrentUser() user: AuthenticatedUser,

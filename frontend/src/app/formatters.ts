@@ -1,4 +1,4 @@
-import type { CardPriority, ProjectStatus } from '../types/api';
+import type { CardPriority, ProjectRole, ProjectStatus } from '../types/api';
 
 const shortDateFormatter = new Intl.DateTimeFormat('pt-BR', {
   day: '2-digit',
@@ -101,6 +101,19 @@ export function getProjectStatusTone(status: ProjectStatus) {
       return 'badge-gray';
     default:
       return 'badge-gray';
+  }
+}
+
+export function formatProjectRole(role: ProjectRole) {
+  switch (role) {
+    case 'MANAGER':
+      return 'Gestor';
+    case 'MEMBER':
+      return 'Membro';
+    case 'VIEWER':
+      return 'Visualizador';
+    default:
+      return role;
   }
 }
 

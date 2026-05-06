@@ -94,16 +94,18 @@ Perfis globais:
 
 Papeis dentro do projeto:
 
-- `MANAGER`: edita projeto, gerencia membros e pode apagar o projeto.
-- `MEMBER`: cria/edita cards, checklist, comentarios e movimentacoes no projeto.
+- `MANAGER` / Gestor: edita o projeto, gerencia participantes, move o projeto entre pastas acessiveis e pode apagar o projeto.
+- `MEMBER` / Membro: cria e edita cards, checklist, comentarios e movimentacoes no projeto.
+- `VIEWER` / Visualizador: visualiza o projeto e o quadro, sem permissao para criar ou alterar cards.
 
 Observacoes:
 
-- `VIEWER` foi removido do modelo. A leitura sem edicao agora vem da visibilidade por pasta/setor.
+- A leitura sem edicao tambem pode vir da visibilidade por pasta/setor, mesmo sem participacao direta no projeto.
 - Usuario que enxerga um projeto somente por setor/pasta nao consegue editar cards nem comentar ate ser adicionado como membro do projeto.
+- Ao adicionar participantes depois da criacao, gestores escolhem apenas entre `Membro` e `Visualizador`; novos gestores nao sao concedidos por esse fluxo.
 - O criador da pasta pode renomear ou apagar a propria pasta enquanto ela estiver vazia.
 - Admins podem criar, renomear e apagar pastas apenas nos setores aos quais tambem estejam vinculados.
-- O owner do projeto e criado como `MANAGER`.
+- O dono do projeto e criado como `MANAGER` / Gestor.
 
 ## Como rodar localmente
 

@@ -58,6 +58,7 @@ export function ProjectsPage() {
   const [folderError, setFolderError] = useState<string | null>(null);
   const [openFolders, setOpenFolders] = useState<Set<string>>(() => new Set());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
 
   function toggleFolder(key: string) {
     setOpenFolders((prev) => {
@@ -273,15 +274,41 @@ export function ProjectsPage() {
     return folder.createdById === user?.id || (isAdmin && userSectorIds.has(folder.sectorId));
   }
 
+  function canMoveProject(project: Project) {
+    if (!user) {
+      return false;
+    }
+
+    if (isAdmin || project.ownerId === user.id) {
+      return true;
+    }
+
+    return project.members.some(
+      (member) => member.user.id === user.id && member.role === 'MANAGER',
+    );
+  }
+
   function renderProjectCard(project: Project) {
+    const projectCanMove = canMoveProject(project);
+
     return (
       <article
-        className="project-card"
-        draggable={isAdmin}
+        className={projectCanMove ? 'project-card project-card-draggable' : 'project-card'}
+        draggable={projectCanMove}
         key={project.id}
         onDragStart={(e) => {
+          if (!projectCanMove) {
+            e.preventDefault();
+            return;
+          }
+
+          setDraggedProjectId(project.id);
           e.dataTransfer.setData('text/plain', project.id);
           e.dataTransfer.effectAllowed = 'move';
+        }}
+        onDragEnd={() => {
+          setDraggedProjectId(null);
+          setDragOverKey(null);
         }}
       >
         <button
@@ -358,6 +385,7 @@ export function ProjectsPage() {
       const projectId = e.dataTransfer.getData('text/plain');
       if (!projectId) return;
       void moveProjectMutation.mutateAsync({ projectId, folderId: targetFolderId });
+      setDraggedProjectId(null);
     }
 
     return (
@@ -365,7 +393,7 @@ export function ProjectsPage() {
         key={key}
         className={`folder-section${isDragOver ? ' folder-section-drop' : ''}`}
         onDragOver={(e) => {
-          if (!isAdmin) return;
+          if (!draggedProjectId) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
           if (dragOverKey !== key) setDragOverKey(key);
@@ -373,7 +401,7 @@ export function ProjectsPage() {
         onDragLeave={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverKey(null);
         }}
-        onDrop={isAdmin ? handleDrop : undefined}
+        onDrop={draggedProjectId ? handleDrop : undefined}
       >
         <header className="folder-header">
           <button
@@ -383,6 +411,7 @@ export function ProjectsPage() {
             aria-expanded={isOpen}
           >
             <span className="folder-caret">{isOpen ? '▾' : '▸'}</span>
+            <span className="folder-icon" aria-hidden="true" />
             <span className="folder-title">
               {folder.name}
             </span>
@@ -741,7 +770,7 @@ export function ProjectsPage() {
 
             {isAdmin ? (
               <div className="field-group">
-                <label className="field-label" htmlFor="project-owner">Owner</label>
+                <label className="field-label" htmlFor="project-owner">Dono</label>
                 <select
                   className="field-input"
                   id="project-owner"
@@ -780,11 +809,11 @@ export function ProjectsPage() {
                   </label>
                 ))}
               </div>
-              <p className="field-helper">O owner sempre sera incluido como gerente do projeto.</p>
+              <p className="field-helper">O dono sempre sera incluido como gestor do projeto.</p>
             </div>
           ) : (
             <p className="field-helper">
-              Voce sera registrado como owner do projeto. Adicione membros depois pela tela de detalhes.
+              Voce sera registrado como gestor do projeto. Adicione participantes depois pela tela de detalhes.
             </p>
           )}
 

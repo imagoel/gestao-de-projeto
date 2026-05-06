@@ -117,6 +117,44 @@ export class ProjectAccessService {
     );
   }
 
+  async ensureProjectManageAccess(user: AuthenticatedUser, projectId: string) {
+    const project = await this.prisma.project.findFirst({
+      where: this.buildProjectAccessWhere(user, projectId),
+      select: {
+        ownerId: true,
+        members: {
+          where: {
+            userId: user.id,
+          },
+          select: {
+            role: true,
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (!project) {
+      throw new ForbiddenException('Projeto indisponivel para este usuario.');
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      return;
+    }
+
+    if (project.ownerId === user.id) {
+      return;
+    }
+
+    if (project.members[0]?.role === ProjectRole.MANAGER) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'Apenas admins, donos ou gestores do projeto podem gerenciar este projeto.',
+    );
+  }
+
   async ensureProjectDeleteAccess(user: AuthenticatedUser, projectId: string) {
     const project = await this.prisma.project.findFirst({
       where: this.buildProjectAccessWhere(user, projectId),
@@ -153,7 +191,7 @@ export class ProjectAccessService {
     }
 
     throw new ForbiddenException(
-      'Apenas admins com acesso, owners ou participantes com perfil MANAGER podem apagar este projeto.',
+      'Apenas admins com acesso, donos ou gestores do projeto podem apagar este projeto.',
     );
   }
 
@@ -167,6 +205,9 @@ export class ProjectAccessService {
             members: {
               some: {
                 userId,
+                role: {
+                  in: [ProjectRole.MANAGER, ProjectRole.MEMBER],
+                },
               },
             },
           },

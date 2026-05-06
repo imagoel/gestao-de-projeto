@@ -1,5 +1,5 @@
 export type UserRole = 'ADMIN' | 'MEMBER';
-export type ProjectRole = 'MANAGER' | 'MEMBER';
+export type ProjectRole = 'MANAGER' | 'MEMBER' | 'VIEWER';
 export type ProjectStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ARCHIVED';
 export type CardPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type FolderVisibility = 'SECTOR' | 'SECRETARIAT';

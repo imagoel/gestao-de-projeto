@@ -188,7 +188,9 @@ export function ProjectBoardPage() {
   });
 
   const memberOptions =
-    projectQuery.data?.members.map((member) => member.user) ?? [];
+    projectQuery.data?.members
+      .filter((member) => member.role !== "VIEWER")
+      .map((member) => member.user) ?? [];
   const columns = useMemo(() => {
     const rawColumns = boardQuery.data?.columns ?? [];
     return rawColumns.map((column) => ({
