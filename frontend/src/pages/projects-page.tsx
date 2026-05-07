@@ -1,4 +1,13 @@
-import { useMemo, useState, type DragEvent, type FormEvent, type WheelEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type FormEvent,
+  type UIEvent,
+  type WheelEvent,
+} from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -59,6 +68,15 @@ export function ProjectsPage() {
   const [openFolders, setOpenFolders] = useState<Set<string>>(() => new Set());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
+  const [projectRowHints, setProjectRowHints] = useState<
+    Record<string, { left: boolean; right: boolean }>
+  >({});
+  const [projectRowLimitFeedback, setProjectRowLimitFeedback] = useState<{
+    folderId: string;
+    edge: 'left' | 'right';
+  } | null>(null);
+  const projectRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const projectRowLimitFeedbackTimeout = useRef<number | null>(null);
 
   function toggleFolder(key: string) {
     setOpenFolders((prev) => {
@@ -179,6 +197,37 @@ export function ProjectsPage() {
     }));
   }, [visibleFolders]);
 
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      projectRowRefs.current.forEach((element, folderId) => {
+        updateProjectRowHints(element, folderId);
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupedProjects, openFolders]);
+
+  useEffect(() => {
+    return () => {
+      if (projectRowLimitFeedbackTimeout.current) {
+        window.clearTimeout(projectRowLimitFeedbackTimeout.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleResize() {
+      projectRowRefs.current.forEach((element, folderId) => {
+        updateProjectRowHints(element, folderId);
+      });
+    }
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const createProjectMutation = useMutation({
     mutationFn: () =>
       api.createProject(token!, {
@@ -270,7 +319,7 @@ export function ProjectsPage() {
     await createProjectMutation.mutateAsync();
   }
 
-  function handleProjectRowWheel(event: WheelEvent<HTMLDivElement>) {
+  function handleProjectRowWheel(event: WheelEvent<HTMLDivElement>, folderId: string) {
     const row = event.currentTarget;
     const hasHorizontalOverflow = row.scrollWidth > row.clientWidth + 1;
 
@@ -278,8 +327,98 @@ export function ProjectsPage() {
       return;
     }
 
+    const isAtLeft = row.scrollLeft <= 0;
+    const isAtRight = row.scrollLeft + row.clientWidth >= row.scrollWidth - 1;
+    const delta =
+      Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+
     event.preventDefault();
-    row.scrollLeft += event.deltaX || event.deltaY;
+
+    if (delta < 0 && isAtLeft) {
+      showProjectRowLimit(folderId, 'left');
+      return;
+    }
+
+    if (delta > 0 && isAtRight) {
+      showProjectRowLimit(folderId, 'right');
+      return;
+    }
+
+    row.scrollLeft += delta;
+    updateProjectRowHints(row, folderId);
+  }
+
+  function handleProjectRowScroll(event: UIEvent<HTMLDivElement>, folderId: string) {
+    updateProjectRowHints(event.currentTarget, folderId);
+  }
+
+  function registerProjectRow(folderId: string, element: HTMLDivElement | null) {
+    if (!element) {
+      projectRowRefs.current.delete(folderId);
+      return;
+    }
+
+    projectRowRefs.current.set(folderId, element);
+    window.requestAnimationFrame(() => updateProjectRowHints(element, folderId));
+  }
+
+  function updateProjectRowHints(element: HTMLDivElement, folderId: string) {
+    const hasScrollableContent = element.scrollWidth > element.clientWidth + 1;
+    const nextHints = {
+      left: hasScrollableContent && element.scrollLeft > 1,
+      right:
+        hasScrollableContent &&
+        element.scrollLeft + element.clientWidth < element.scrollWidth - 1,
+    };
+
+    setProjectRowHints((current) => {
+      const currentHints = current[folderId];
+
+      if (
+        currentHints?.left === nextHints.left &&
+        currentHints?.right === nextHints.right
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [folderId]: nextHints,
+      };
+    });
+  }
+
+  function showProjectRowLimit(folderId: string, edge: 'left' | 'right') {
+    setProjectRowLimitFeedback({ folderId, edge });
+
+    if (projectRowLimitFeedbackTimeout.current) {
+      window.clearTimeout(projectRowLimitFeedbackTimeout.current);
+    }
+
+    projectRowLimitFeedbackTimeout.current = window.setTimeout(() => {
+      setProjectRowLimitFeedback((current) =>
+        current?.folderId === folderId && current.edge === edge ? null : current,
+      );
+    }, 420);
+  }
+
+  function getProjectRowShellClassName(folderId: string) {
+    const classNames = ['project-row-shell'];
+    const hints = projectRowHints[folderId];
+
+    if (hints?.left) {
+      classNames.push('project-row-has-more-left');
+    }
+
+    if (hints?.right) {
+      classNames.push('project-row-has-more-right');
+    }
+
+    if (projectRowLimitFeedback?.folderId === folderId) {
+      classNames.push(`project-row-scroll-limit-${projectRowLimitFeedback.edge}`);
+    }
+
+    return classNames.join(' ');
   }
 
   function canManageFolder(folder: ProjectFolder) {
@@ -464,11 +603,13 @@ export function ProjectsPage() {
         </header>
         {isOpen ? (
           projects.length > 0 ? (
-            <div className="project-row-shell">
+            <div className={getProjectRowShellClassName(folder.id)}>
               <div
                 aria-label={`Projetos da pasta ${folder.name}`}
                 className="project-row-scroll"
-                onWheel={handleProjectRowWheel}
+                onScroll={(event) => handleProjectRowScroll(event, folder.id)}
+                onWheel={(event) => handleProjectRowWheel(event, folder.id)}
+                ref={(element) => registerProjectRow(folder.id, element)}
                 role="list"
               >
                 {projects.map(renderProjectCard)}
