@@ -277,6 +277,39 @@ textarea {
   gap: 16px;
 }
 
+.project-row-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.project-row-shell::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 8px;
+  width: 46px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(245, 245, 240, 0), rgba(245, 245, 240, 0.92));
+  content: "";
+}
+
+.project-row-scroll {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  padding: 0 48px 8px 0;
+  scroll-padding-inline: 2px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.project-row-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .task-card-rename {
   cursor: pointer;
   font-size: 0.95rem;
@@ -388,32 +421,16 @@ textarea {
   font-size: 0.9rem;
 }
 
-.folder-icon {
-  position: relative;
-  display: inline-block;
-  width: 17px;
-  height: 12px;
-  flex: 0 0 auto;
-  border-radius: 3px;
-  background: #d7b56d;
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.08);
-}
-
-.folder-icon::before {
-  position: absolute;
-  top: -4px;
-  left: 2px;
-  width: 8px;
-  height: 5px;
-  border-radius: 3px 3px 0 0;
-  background: #e5c980;
-  content: "";
-}
-
 .folder-count {
   color: #6f6b63;
   font-size: 0.85rem;
   font-weight: 400;
+}
+
+.folder-emoji {
+  margin-right: 6px;
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .folder-empty {
@@ -436,7 +453,10 @@ textarea {
 
 .project-card {
   display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 12px;
+  width: 100%;
+  min-height: 214px;
   padding: 18px;
   border: 1px solid #d4d1c7;
   border-radius: 18px;
@@ -444,10 +464,18 @@ textarea {
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
+.project-row-scroll .project-card {
+  width: clamp(280px, 21vw, 324px);
+  min-width: clamp(280px, 21vw, 324px);
+  scroll-snap-align: start;
+}
+
 .project-card-main {
   display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 12px;
   width: 100%;
+  height: 100%;
   padding: 0;
   border: 0;
   background: transparent;
@@ -474,12 +502,25 @@ textarea {
 .project-card-title {
   margin: 0;
   font-size: 1rem;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .project-card-copy {
   margin: 0;
   color: #64615a;
   font-size: 0.95rem;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.project-card .stack {
+  gap: 12px;
+  align-content: start;
 }
 
 .project-meta {
@@ -1463,6 +1504,19 @@ textarea {
   cursor: grabbing;
 }
 
+.checklist-item[draggable="true"] .checklist-main,
+.checklist-item[draggable="true"] .checklist-number,
+.checklist-item[draggable="true"] .checklist-title {
+  cursor: grab;
+  user-select: none;
+}
+
+.checklist-item[draggable="true"]:active .checklist-main,
+.checklist-item[draggable="true"]:active .checklist-number,
+.checklist-item[draggable="true"]:active .checklist-title {
+  cursor: grabbing;
+}
+
 .checklist-item input,
 .checklist-item button,
 .checklist-item textarea,
@@ -1477,6 +1531,13 @@ textarea {
 
 .checklist-item-dragging {
   opacity: 0.55;
+}
+
+.checklist-item-highlight {
+  border-color: rgba(24, 95, 165, 0.75);
+  background: #eef6ff;
+  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.16);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .checklist-item-drop-before {
@@ -1565,6 +1626,7 @@ textarea {
 }
 
 .checklist-reference {
+  border: 0;
   display: inline-flex;
   align-items: center;
   margin: 0 2px;
@@ -1572,8 +1634,15 @@ textarea {
   border-radius: 8px;
   background: #eaf4ff;
   color: #004b8d;
+  cursor: pointer;
+  font: inherit;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.checklist-reference:hover {
+  background: #d8ebff;
+  text-decoration: underline;
 }
 
 .checklist-reference-done {

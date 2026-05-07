@@ -176,14 +176,16 @@ export function CardChecklistSection({
             <div
               className={checklistItemClassName}
               data-checklist-item-id={item.id}
+              data-checklist-item-number={index + 1}
               draggable={!isBusy && !readOnly && !isEditing}
               key={item.id}
               onDragEnd={handleDragEnd}
               onDragStart={(event) => handleDragStart(event, item.id)}
               title={!readOnly && !isEditing ? 'Arraste para reordenar' : undefined}
             >
-              <label className="checklist-main">
+              <div className="checklist-main">
                 <input
+                  aria-label={`Marcar checklist ${index + 1}`}
                   checked={item.done}
                   disabled={isBusy || readOnly}
                   onChange={() => void onToggle(item)}
@@ -213,7 +215,7 @@ export function CardChecklistSection({
                     {item.title}
                   </span>
                 )}
-              </label>
+              </div>
 
               <div className="checklist-actions">
                 {isEditing ? (

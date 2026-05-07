@@ -24,6 +24,7 @@ type CardCommentsSectionProps = {
   submitLabel?: string;
   title?: string;
   onCreate: (content: string) => Promise<unknown>;
+  onReferenceClick?: (referenceNumber: number) => void;
 };
 
 export function CardCommentsSection({
@@ -41,6 +42,7 @@ export function CardCommentsSection({
   submitLabel = 'Comentar',
   title = 'Comentarios',
   onCreate,
+  onReferenceClick,
 }: CardCommentsSectionProps) {
   const [draftComment, setDraftComment] = useState('');
   const referencesByNumber = new Map(
@@ -73,17 +75,19 @@ export function CardCommentsSection({
       }
 
       return (
-        <span
+        <button
           className={
             reference.done
               ? 'checklist-reference checklist-reference-done'
               : 'checklist-reference'
           }
           key={`${part}-${index}`}
+          onClick={() => onReferenceClick?.(reference.number)}
           title={`Checklist ${reference.number}: ${reference.title}`}
+          type="button"
         >
           {part}
-        </span>
+        </button>
       );
     });
   }

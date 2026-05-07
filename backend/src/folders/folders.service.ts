@@ -100,16 +100,29 @@ export class FoldersService {
   private async ensureSectorExists(id: string) {
     const sector = await this.prisma.sector.findUnique({
       where: { id },
-      select: { id: true },
+      select: {
+        id: true,
+        secretariat: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
 
     if (!sector) {
       throw new NotFoundException('Setor nao encontrado.');
     }
+
+    return sector;
   }
 
   private async ensureSectorCreateAccess(user: AuthenticatedUser, sectorId: string) {
-    await this.ensureSectorExists(sectorId);
+    const sector = await this.ensureSectorExists(sectorId);
+
+    if (user.role === UserRole.ADMIN && sector.secretariat.name === 'GTI') {
+      return;
+    }
 
     const membership = await this.prisma.userSector.findUnique({
       where: {
@@ -135,6 +148,15 @@ export class FoldersService {
         id: true,
         sectorId: true,
         createdById: true,
+        sector: {
+          select: {
+            secretariat: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -150,6 +172,10 @@ export class FoldersService {
       throw new ForbiddenException(
         'Apenas o criador da pasta pode alterar ou apagar esta pasta.',
       );
+    }
+
+    if (folder.sector.secretariat.name === 'GTI') {
+      return;
     }
 
     const membership = await this.prisma.userSector.findUnique({

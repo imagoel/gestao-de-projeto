@@ -254,35 +254,47 @@ export class ProjectAccessService {
   }
 
   buildFolderAccessWhere(user: AuthenticatedUser): Prisma.ProjectFolderWhereInput {
-    return {
-      OR: [
-        {
-          visibility: FolderVisibility.SECTOR,
-          sector: {
-            userMemberships: {
-              some: {
-                userId: user.id,
-              },
+    const accessRules: Prisma.ProjectFolderWhereInput[] = [
+      {
+        visibility: FolderVisibility.SECTOR,
+        sector: {
+          userMemberships: {
+            some: {
+              userId: user.id,
             },
           },
         },
-        {
-          visibility: FolderVisibility.SECRETARIAT,
-          sector: {
-            secretariat: {
-              sectors: {
-                some: {
-                  userMemberships: {
-                    some: {
-                      userId: user.id,
-                    },
+      },
+      {
+        visibility: FolderVisibility.SECRETARIAT,
+        sector: {
+          secretariat: {
+            sectors: {
+              some: {
+                userMemberships: {
+                  some: {
+                    userId: user.id,
                   },
                 },
               },
             },
           },
         },
-      ],
+      },
+    ];
+
+    if (user.role === UserRole.ADMIN) {
+      accessRules.push({
+        sector: {
+          secretariat: {
+            name: 'GTI',
+          },
+        },
+      });
+    }
+
+    return {
+      OR: accessRules,
     };
   }
 

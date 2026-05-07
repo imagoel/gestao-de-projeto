@@ -693,6 +693,26 @@ export function ProjectBoardPage() {
     await deleteChecklistItemMutation.mutateAsync(item.id);
   }
 
+  function handleChecklistReferenceClick(referenceNumber: number) {
+    const checklistItem = document.querySelector<HTMLElement>(
+      `[data-checklist-item-number="${referenceNumber}"]`,
+    );
+
+    if (!checklistItem) {
+      return;
+    }
+
+    checklistItem.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    checklistItem.classList.add("checklist-item-highlight");
+
+    window.setTimeout(() => {
+      checklistItem.classList.remove("checklist-item-highlight");
+    }, 1200);
+  }
+
   function handleDragStart(
     cardId: string,
     sourceColumnId: string,
@@ -1642,6 +1662,7 @@ export function ProjectBoardPage() {
                 onCreate={(content) =>
                   createCardDescriptionMutation.mutateAsync(content)
                 }
+                onReferenceClick={handleChecklistReferenceClick}
               />
 
               <div className="form-row form-row-3">

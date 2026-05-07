@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent, type FormEvent } from 'react';
+import { useMemo, useState, type DragEvent, type FormEvent, type WheelEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -270,6 +270,18 @@ export function ProjectsPage() {
     await createProjectMutation.mutateAsync();
   }
 
+  function handleProjectRowWheel(event: WheelEvent<HTMLDivElement>) {
+    const row = event.currentTarget;
+    const hasHorizontalOverflow = row.scrollWidth > row.clientWidth + 1;
+
+    if (!hasHorizontalOverflow) {
+      return;
+    }
+
+    event.preventDefault();
+    row.scrollLeft += event.deltaX || event.deltaY;
+  }
+
   function canManageFolder(folder: ProjectFolder) {
     return folder.createdById === user?.id || (isAdmin && userSectorIds.has(folder.sectorId));
   }
@@ -296,6 +308,7 @@ export function ProjectsPage() {
         className={projectCanMove ? 'project-card project-card-draggable' : 'project-card'}
         draggable={projectCanMove}
         key={project.id}
+        role="listitem"
         onDragStart={(e) => {
           if (!projectCanMove) {
             e.preventDefault();
@@ -411,8 +424,8 @@ export function ProjectsPage() {
             aria-expanded={isOpen}
           >
             <span className="folder-caret">{isOpen ? '▾' : '▸'}</span>
-            <span className="folder-icon" aria-hidden="true" />
             <span className="folder-title">
+              <span className="folder-emoji" aria-hidden="true">📁</span>
               {folder.name}
             </span>
             <span className="folder-count">({projects.length})</span>
@@ -451,7 +464,16 @@ export function ProjectsPage() {
         </header>
         {isOpen ? (
           projects.length > 0 ? (
-            <div className="project-grid">{projects.map(renderProjectCard)}</div>
+            <div className="project-row-shell">
+              <div
+                aria-label={`Projetos da pasta ${folder.name}`}
+                className="project-row-scroll"
+                onWheel={handleProjectRowWheel}
+                role="list"
+              >
+                {projects.map(renderProjectCard)}
+              </div>
+            </div>
           ) : (
             <p className="field-helper folder-empty">
               {isAdmin ? 'Pasta vazia. Arraste projetos ate aqui para mover.' : 'Pasta vazia.'}

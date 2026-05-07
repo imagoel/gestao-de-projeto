@@ -91,6 +91,7 @@ Perfis globais:
 - `MEMBER`: ve projetos em que participa, projetos que criou e projetos em pastas liberadas ao seu setor/secretaria.
 - usuarios possuem status `Ativo/Inativo`; inativos nao conseguem autenticar nem usar tokens existentes.
 - membros podem criar pastas apenas nos setores vinculados ao proprio usuario.
+- excecao operacional da GTI: usuarios `ADMIN` enxergam e gerenciam todas as pastas da secretaria `GTI`; membros continuam limitados aos setores aos quais foram vinculados.
 
 Papeis dentro do projeto:
 
