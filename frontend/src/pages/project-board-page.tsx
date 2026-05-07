@@ -344,6 +344,41 @@ export function ProjectBoardPage() {
     },
   });
 
+  const updateCardDescriptionMutation = useMutation({
+    mutationFn: async (payload: { commentId: string; content: string }) =>
+      api.updateCardComment(token!, payload.commentId, { content: payload.content }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["card-comments", selectedCardId],
+      });
+      setDescriptionError(null);
+    },
+    onError: (error) => {
+      setDescriptionError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel editar a descricao do card.",
+      );
+    },
+  });
+
+  const deleteCardDescriptionMutation = useMutation({
+    mutationFn: async (commentId: string) => api.deleteCardComment(token!, commentId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["card-comments", selectedCardId],
+      });
+      setDescriptionError(null);
+    },
+    onError: (error) => {
+      setDescriptionError(
+        error instanceof ApiError
+          ? error.message
+          : "Nao foi possivel apagar a descricao do card.",
+      );
+    },
+  });
+
   const archiveCardMutation = useMutation({
     mutationFn: async () => {
       if (!selectedCardId) {
@@ -1652,7 +1687,11 @@ export function ProjectBoardPage() {
                 errorMessage={cardDescriptionErrorMessage}
                 fieldLabel="Adicionar descricao"
                 inputId="card-description-history"
-                isBusy={createCardDescriptionMutation.isPending}
+                isBusy={
+                  createCardDescriptionMutation.isPending ||
+                  updateCardDescriptionMutation.isPending ||
+                  deleteCardDescriptionMutation.isPending
+                }
                 isLoading={commentsQuery.isLoading}
                 placeholder="Escreva uma descricao, observacao ou atualizacao..."
                 readOnly={!canEditProject}
@@ -1662,7 +1701,13 @@ export function ProjectBoardPage() {
                 onCreate={(content) =>
                   createCardDescriptionMutation.mutateAsync(content)
                 }
+                onDelete={(commentId) =>
+                  deleteCardDescriptionMutation.mutateAsync(commentId)
+                }
                 onReferenceClick={handleChecklistReferenceClick}
+                onUpdate={(commentId, content) =>
+                  updateCardDescriptionMutation.mutateAsync({ commentId, content })
+                }
               />
 
               <div className="form-row form-row-3">

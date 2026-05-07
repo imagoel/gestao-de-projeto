@@ -24,7 +24,9 @@ type CardCommentsSectionProps = {
   submitLabel?: string;
   title?: string;
   onCreate: (content: string) => Promise<unknown>;
+  onDelete?: (commentId: string) => Promise<unknown>;
   onReferenceClick?: (referenceNumber: number) => void;
+  onUpdate?: (commentId: string, content: string) => Promise<unknown>;
 };
 
 export function CardCommentsSection({
@@ -42,9 +44,13 @@ export function CardCommentsSection({
   submitLabel = 'Comentar',
   title = 'Comentarios',
   onCreate,
+  onDelete,
   onReferenceClick,
+  onUpdate,
 }: CardCommentsSectionProps) {
   const [draftComment, setDraftComment] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState('');
   const referencesByNumber = new Map(
     checklistReferences.map((reference) => [reference.number, reference]),
   );
@@ -58,6 +64,30 @@ export function CardCommentsSection({
 
     await onCreate(content);
     setDraftComment('');
+  }
+
+  async function handleUpdate(commentId: string) {
+    const content = editingDraft.trim();
+
+    if (!content || !onUpdate) {
+      return;
+    }
+
+    await onUpdate(commentId, content);
+    setEditingCommentId(null);
+    setEditingDraft('');
+  }
+
+  async function handleDelete(commentId: string) {
+    if (!onDelete || !window.confirm('Apagar esta descricao?')) {
+      return;
+    }
+
+    await onDelete(commentId);
+  }
+
+  function hasBeenEdited(comment: CardComment) {
+    return Math.abs(new Date(comment.updatedAt).getTime() - new Date(comment.createdAt).getTime()) > 1000;
   }
 
   function renderContent(content: string) {
@@ -106,9 +136,76 @@ export function CardCommentsSection({
           <article className="comment-item" key={comment.id}>
             <div className="comment-header">
               <strong>{comment.author.name}</strong>
-              <span>{formatDateTime(comment.createdAt)}</span>
+              <div className="comment-meta">
+                <span>{formatDateTime(comment.createdAt)}</span>
+                {hasBeenEdited(comment) ? (
+                  <span className="comment-edited">
+                    Editada em {formatDateTime(comment.updatedAt)}
+                  </span>
+                ) : null}
+              </div>
             </div>
-            <p className="comment-content">{renderContent(comment.content)}</p>
+            {editingCommentId === comment.id ? (
+              <div className="comment-edit-form">
+                <textarea
+                  className="field-input field-textarea comment-textarea"
+                  disabled={isBusy}
+                  onChange={(event) => setEditingDraft(event.target.value)}
+                  rows={3}
+                  value={editingDraft}
+                />
+                <div className="inline-form inline-form-end">
+                  <button
+                    className="secondary-button"
+                    disabled={isBusy}
+                    onClick={() => {
+                      setEditingCommentId(null);
+                      setEditingDraft('');
+                    }}
+                    type="button"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="primary-button"
+                    disabled={isBusy || !editingDraft.trim()}
+                    onClick={() => void handleUpdate(comment.id)}
+                    type="button"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="comment-content">{renderContent(comment.content)}</p>
+            )}
+            {!readOnly && editingCommentId !== comment.id && (onUpdate || onDelete) ? (
+              <div className="comment-actions">
+                {onUpdate ? (
+                  <button
+                    className="text-button"
+                    disabled={isBusy}
+                    onClick={() => {
+                      setEditingCommentId(comment.id);
+                      setEditingDraft(comment.content);
+                    }}
+                    type="button"
+                  >
+                    Editar
+                  </button>
+                ) : null}
+                {onDelete ? (
+                  <button
+                    className="text-button text-button-danger"
+                    disabled={isBusy}
+                    onClick={() => void handleDelete(comment.id)}
+                    type="button"
+                  >
+                    Excluir
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </article>
         ))}
 

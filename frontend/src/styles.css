@@ -1618,11 +1618,39 @@ textarea {
   font-size: 0.85rem;
 }
 
+.comment-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 10px;
+  text-align: right;
+}
+
+.comment-edited {
+  color: #8b6b2f;
+  font-weight: 600;
+}
+
 .comment-content {
   margin: 0;
   color: #1f1d1a;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.comment-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.comment-edit-form {
+  display: grid;
+  gap: 10px;
+}
+
+.text-button-danger {
+  color: #9e243d;
 }
 
 .checklist-reference {

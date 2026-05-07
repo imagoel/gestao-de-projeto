@@ -407,6 +407,21 @@ export const api = {
     });
   },
 
+  updateCardComment(token: string, commentId: string, payload: { content: string }) {
+    return request<CardComment>(`/comments/${commentId}`, {
+      method: 'PATCH',
+      token,
+      body: payload,
+    });
+  },
+
+  deleteCardComment(token: string, commentId: string) {
+    return request<{ success: true }>(`/comments/${commentId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
   createCard(
     token: string,
     columnId: string,
