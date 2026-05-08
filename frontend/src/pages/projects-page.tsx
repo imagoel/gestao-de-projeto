@@ -6,7 +6,6 @@ import {
   type DragEvent,
   type FormEvent,
   type UIEvent,
-  type WheelEvent,
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
@@ -76,6 +75,9 @@ export function ProjectsPage() {
     edge: 'left' | 'right';
   } | null>(null);
   const projectRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const projectRowWheelHandlers = useRef<
+    Map<string, (event: globalThis.WheelEvent) => void>
+  >(new Map());
   const projectRowLimitFeedbackTimeout = useRef<number | null>(null);
 
   function toggleFolder(key: string) {
@@ -213,6 +215,17 @@ export function ProjectsPage() {
       if (projectRowLimitFeedbackTimeout.current) {
         window.clearTimeout(projectRowLimitFeedbackTimeout.current);
       }
+
+      projectRowRefs.current.forEach((element, folderId) => {
+        const handler = projectRowWheelHandlers.current.get(folderId);
+
+        if (handler) {
+          element.removeEventListener('wheel', handler);
+        }
+      });
+
+      projectRowRefs.current.clear();
+      projectRowWheelHandlers.current.clear();
     };
   }, []);
 
@@ -319,20 +332,28 @@ export function ProjectsPage() {
     await createProjectMutation.mutateAsync();
   }
 
-  function handleProjectRowWheel(event: WheelEvent<HTMLDivElement>, folderId: string) {
-    const row = event.currentTarget;
+  function handleProjectRowWheel(
+    event: globalThis.WheelEvent,
+    folderId: string,
+    row: HTMLDivElement,
+  ) {
     const hasHorizontalOverflow = row.scrollWidth > row.clientWidth + 1;
 
     if (!hasHorizontalOverflow) {
       return;
     }
 
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
     const isAtLeft = row.scrollLeft <= 0;
     const isAtRight = row.scrollLeft + row.clientWidth >= row.scrollWidth - 1;
     const delta =
       Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-
-    event.preventDefault();
 
     if (delta < 0 && isAtLeft) {
       showProjectRowLimit(folderId, 'left');
@@ -354,8 +375,30 @@ export function ProjectsPage() {
 
   function registerProjectRow(folderId: string, element: HTMLDivElement | null) {
     if (!element) {
+      const previousElement = projectRowRefs.current.get(folderId);
+      const previousHandler = projectRowWheelHandlers.current.get(folderId);
+
+      if (previousElement && previousHandler) {
+        previousElement.removeEventListener('wheel', previousHandler);
+      }
+
       projectRowRefs.current.delete(folderId);
+      projectRowWheelHandlers.current.delete(folderId);
       return;
+    }
+
+    const previousElement = projectRowRefs.current.get(folderId);
+    const previousHandler = projectRowWheelHandlers.current.get(folderId);
+
+    if (previousElement && previousHandler && previousElement !== element) {
+      previousElement.removeEventListener('wheel', previousHandler);
+    }
+
+    if (!previousHandler || previousElement !== element) {
+      const nextHandler = (event: globalThis.WheelEvent) =>
+        handleProjectRowWheel(event, folderId, element);
+      element.addEventListener('wheel', nextHandler, { passive: false });
+      projectRowWheelHandlers.current.set(folderId, nextHandler);
     }
 
     projectRowRefs.current.set(folderId, element);
@@ -608,7 +651,6 @@ export function ProjectsPage() {
                 aria-label={`Projetos da pasta ${folder.name}`}
                 className="project-row-scroll"
                 onScroll={(event) => handleProjectRowScroll(event, folder.id)}
-                onWheel={(event) => handleProjectRowWheel(event, folder.id)}
                 ref={(element) => registerProjectRow(folder.id, element)}
                 role="list"
               >

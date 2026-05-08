@@ -14,6 +14,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
   background: #f5f5f0;
   background:
     radial-gradient(circle at 20% 50%, rgba(51, 154, 128, 0.08) 0%, transparent 50%),
@@ -318,7 +319,7 @@ textarea {
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  overscroll-behavior-x: contain;
+  overscroll-behavior: contain;
   padding: 4px 8px 10px 0;
   scroll-padding-inline: 2px;
   scroll-snap-type: x proximity;
@@ -657,7 +658,9 @@ textarea {
 }
 
 .board-column-scroll-limit-bottom {
-  --board-scroll-limit-shadow: inset 0 -18px 18px -20px rgba(24, 95, 165, 0.7);
+  --board-scroll-limit-shadow:
+    inset 0 -58px 36px -28px rgba(51, 154, 128, 0.78),
+    inset 0 -22px 18px -18px rgba(158, 36, 61, 0.32);
 }
 
 .board-inline-note,
@@ -1525,24 +1528,12 @@ textarea {
   background: #fbfaf7;
 }
 
-.checklist-item[draggable="true"] {
-  cursor: grab;
-}
-
-.checklist-item[draggable="true"]:active {
-  cursor: grabbing;
-}
-
-.checklist-item[draggable="true"] .checklist-main,
-.checklist-item[draggable="true"] .checklist-number,
-.checklist-item[draggable="true"] .checklist-title {
+.checklist-drag-area[draggable="true"] {
   cursor: grab;
   user-select: none;
 }
 
-.checklist-item[draggable="true"]:active .checklist-main,
-.checklist-item[draggable="true"]:active .checklist-number,
-.checklist-item[draggable="true"]:active .checklist-title {
+.checklist-drag-area[draggable="true"]:active {
   cursor: grabbing;
 }
 
@@ -1584,6 +1575,14 @@ textarea {
   min-width: 0;
 }
 
+.checklist-drag-area {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .checklist-number {
   display: inline-flex;
   width: 24px;
@@ -1600,6 +1599,7 @@ textarea {
 }
 
 .checklist-title {
+  min-width: 0;
   color: #1f1d1a;
   word-break: break-word;
 }

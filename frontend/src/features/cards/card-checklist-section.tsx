@@ -177,11 +177,7 @@ export function CardChecklistSection({
               className={checklistItemClassName}
               data-checklist-item-id={item.id}
               data-checklist-item-number={index + 1}
-              draggable={!isBusy && !readOnly && !isEditing}
               key={item.id}
-              onDragEnd={handleDragEnd}
-              onDragStart={(event) => handleDragStart(event, item.id)}
-              title={!readOnly && !isEditing ? 'Arraste para reordenar' : undefined}
             >
               <div className="checklist-main">
                 <input
@@ -191,30 +187,38 @@ export function CardChecklistSection({
                   onChange={() => void onToggle(item)}
                   type="checkbox"
                 />
-                <span
-                  aria-label={`Checklist ${index + 1}`}
-                  className="checklist-number"
-                  title={`Referencia @${index + 1}`}
+                <div
+                  className="checklist-drag-area"
+                  draggable={!isBusy && !readOnly && !isEditing}
+                  onDragEnd={handleDragEnd}
+                  onDragStart={(event) => handleDragStart(event, item.id)}
+                  title={!readOnly && !isEditing ? 'Arraste para reordenar' : undefined}
                 >
-                  {index + 1}
-                </span>
-                {isEditing ? (
-                  <input
-                    className="field-input checklist-inline-input"
-                    onChange={(event) => setEditingTitle(event.target.value)}
-                    value={editingTitle}
-                  />
-                ) : (
                   <span
-                    className={
-                      item.done
-                        ? "checklist-title checklist-title-done"
-                        : "checklist-title"
-                    }
+                    aria-label={`Checklist ${index + 1}`}
+                    className="checklist-number"
+                    title={`Referencia @${index + 1}`}
                   >
-                    {item.title}
+                    {index + 1}
                   </span>
-                )}
+                  {isEditing ? (
+                    <input
+                      className="field-input checklist-inline-input"
+                      onChange={(event) => setEditingTitle(event.target.value)}
+                      value={editingTitle}
+                    />
+                  ) : (
+                    <span
+                      className={
+                        item.done
+                          ? "checklist-title checklist-title-done"
+                          : "checklist-title"
+                      }
+                    >
+                      {item.title}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="checklist-actions">

@@ -819,6 +819,17 @@ export function ProjectBoardPage() {
 
     event.preventDefault();
 
+    const element = event.currentTarget;
+    const hasScrollableContent = element.scrollHeight > element.clientHeight + 1;
+    const isAtBottom =
+      element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
+    const isNearBottom =
+      event.clientY >= element.getBoundingClientRect().bottom - 28;
+
+    if (hasScrollableContent && isAtBottom && isNearBottom) {
+      showColumnScrollLimit(column.id, "bottom");
+    }
+
     const nextPosition = getDropPositionFromPointer(event, column);
     if (
       dropTarget?.columnId !== column.id ||
@@ -954,10 +965,12 @@ export function ProjectBoardPage() {
       element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
 
     if (event.deltaY < 0 && isAtTop) {
+      event.preventDefault();
       showColumnScrollLimit(columnId, "top");
     }
 
     if (event.deltaY > 0 && isAtBottom) {
+      event.preventDefault();
       showColumnScrollLimit(columnId, "bottom");
     }
   }
