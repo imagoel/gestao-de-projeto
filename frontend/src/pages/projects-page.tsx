@@ -337,9 +337,42 @@ export function ProjectsPage() {
     folderId: string,
     row: HTMLDivElement,
   ) {
-    const hasHorizontalOverflow = row.scrollWidth > row.clientWidth + 1;
+    const horizontalOverflow = row.scrollWidth - row.clientWidth;
+    const hasHorizontalOverflow = horizontalOverflow > 12;
 
     if (!hasHorizontalOverflow) {
+      return;
+    }
+
+    const isAtLeft = row.scrollLeft <= 0;
+    const isAtRight = row.scrollLeft + row.clientWidth >= row.scrollWidth - 1;
+    const delta =
+      Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    const isVerticalWheelIntent = Math.abs(event.deltaY) >= Math.abs(event.deltaX);
+
+    if (delta < 0 && isAtLeft) {
+      showProjectRowLimit(folderId, 'left');
+      if (isVerticalWheelIntent) {
+        return;
+      }
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return;
+    }
+
+    if (delta > 0 && isAtRight) {
+      showProjectRowLimit(folderId, 'right');
+      if (isVerticalWheelIntent) {
+        return;
+      }
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+      event.stopPropagation();
+      event.stopImmediatePropagation();
       return;
     }
 
@@ -349,21 +382,6 @@ export function ProjectsPage() {
 
     event.stopPropagation();
     event.stopImmediatePropagation();
-
-    const isAtLeft = row.scrollLeft <= 0;
-    const isAtRight = row.scrollLeft + row.clientWidth >= row.scrollWidth - 1;
-    const delta =
-      Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-
-    if (delta < 0 && isAtLeft) {
-      showProjectRowLimit(folderId, 'left');
-      return;
-    }
-
-    if (delta > 0 && isAtRight) {
-      showProjectRowLimit(folderId, 'right');
-      return;
-    }
 
     row.scrollLeft += delta;
     updateProjectRowHints(row, folderId);
