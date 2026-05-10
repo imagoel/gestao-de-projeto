@@ -283,7 +283,6 @@ textarea {
 .project-row-shell {
   --project-row-left-hint-shadow: none;
   --project-row-right-hint-shadow: none;
-  --project-row-limit-shadow: none;
   position: relative;
   width: 100%;
   max-width: 100%;
@@ -303,14 +302,6 @@ textarea {
     inset -18px 0 18px -18px rgba(158, 36, 61, 0.2);
 }
 
-.project-row-scroll-limit-left {
-  --project-row-limit-shadow: inset 18px 0 18px -20px rgba(24, 95, 165, 0.7);
-}
-
-.project-row-scroll-limit-right {
-  --project-row-limit-shadow: inset -18px 0 18px -20px rgba(24, 95, 165, 0.7);
-}
-
 .project-row-scroll {
   display: flex;
   gap: 16px;
@@ -321,20 +312,32 @@ textarea {
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   overscroll-behavior-y: auto;
-  padding: 4px 8px 10px 0;
+  padding: 4px 8px 14px 0;
   scroll-padding-inline: 2px;
   scroll-snap-type: x proximity;
-  scrollbar-width: none;
+  scrollbar-color: rgba(24, 95, 165, 0.34) transparent;
+  scrollbar-width: thin;
   box-shadow:
     var(--project-row-left-hint-shadow),
-    var(--project-row-right-hint-shadow),
-    var(--project-row-limit-shadow);
+    var(--project-row-right-hint-shadow);
   transition: box-shadow 0.22s ease;
 }
 
 .project-row-scroll::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  height: 8px;
+}
+
+.project-row-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.project-row-scroll::-webkit-scrollbar-thumb {
+  background: rgba(24, 95, 165, 0.28);
+  border-radius: 999px;
+}
+
+.project-row-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 95, 165, 0.46);
 }
 
 .task-card-rename {

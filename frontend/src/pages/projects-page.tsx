@@ -70,15 +70,7 @@ export function ProjectsPage() {
   const [projectRowHints, setProjectRowHints] = useState<
     Record<string, { left: boolean; right: boolean }>
   >({});
-  const [projectRowLimitFeedback, setProjectRowLimitFeedback] = useState<{
-    folderId: string;
-    edge: 'left' | 'right';
-  } | null>(null);
   const projectRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const projectRowWheelHandlers = useRef<
-    Map<string, (event: globalThis.WheelEvent) => void>
-  >(new Map());
-  const projectRowLimitFeedbackTimeout = useRef<number | null>(null);
 
   function toggleFolder(key: string) {
     setOpenFolders((prev) => {
@@ -212,20 +204,7 @@ export function ProjectsPage() {
 
   useEffect(() => {
     return () => {
-      if (projectRowLimitFeedbackTimeout.current) {
-        window.clearTimeout(projectRowLimitFeedbackTimeout.current);
-      }
-
-      projectRowRefs.current.forEach((element, folderId) => {
-        const handler = projectRowWheelHandlers.current.get(folderId);
-
-        if (handler) {
-          element.removeEventListener('wheel', handler);
-        }
-      });
-
       projectRowRefs.current.clear();
-      projectRowWheelHandlers.current.clear();
     };
   }, []);
 
@@ -332,91 +311,14 @@ export function ProjectsPage() {
     await createProjectMutation.mutateAsync();
   }
 
-  function handleProjectRowWheel(
-    event: globalThis.WheelEvent,
-    folderId: string,
-    row: HTMLDivElement,
-  ) {
-    const horizontalOverflow = row.scrollWidth - row.clientWidth;
-    const hasHorizontalOverflow = horizontalOverflow > 12;
-
-    if (!hasHorizontalOverflow) {
-      return;
-    }
-
-    const isAtLeft = row.scrollLeft <= 0;
-    const isAtRight = row.scrollLeft + row.clientWidth >= row.scrollWidth - 1;
-    const delta =
-      Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-    const isVerticalWheelIntent = Math.abs(event.deltaY) >= Math.abs(event.deltaX);
-
-    if (delta < 0 && isAtLeft) {
-      showProjectRowLimit(folderId, 'left');
-      if (isVerticalWheelIntent) {
-        return;
-      }
-      if (event.cancelable) {
-        event.preventDefault();
-      }
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      return;
-    }
-
-    if (delta > 0 && isAtRight) {
-      showProjectRowLimit(folderId, 'right');
-      if (isVerticalWheelIntent) {
-        return;
-      }
-      if (event.cancelable) {
-        event.preventDefault();
-      }
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      return;
-    }
-
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-
-    row.scrollLeft += delta;
-    updateProjectRowHints(row, folderId);
-  }
-
   function handleProjectRowScroll(event: UIEvent<HTMLDivElement>, folderId: string) {
     updateProjectRowHints(event.currentTarget, folderId);
   }
 
   function registerProjectRow(folderId: string, element: HTMLDivElement | null) {
     if (!element) {
-      const previousElement = projectRowRefs.current.get(folderId);
-      const previousHandler = projectRowWheelHandlers.current.get(folderId);
-
-      if (previousElement && previousHandler) {
-        previousElement.removeEventListener('wheel', previousHandler);
-      }
-
       projectRowRefs.current.delete(folderId);
-      projectRowWheelHandlers.current.delete(folderId);
       return;
-    }
-
-    const previousElement = projectRowRefs.current.get(folderId);
-    const previousHandler = projectRowWheelHandlers.current.get(folderId);
-
-    if (previousElement && previousHandler && previousElement !== element) {
-      previousElement.removeEventListener('wheel', previousHandler);
-    }
-
-    if (!previousHandler || previousElement !== element) {
-      const nextHandler = (event: globalThis.WheelEvent) =>
-        handleProjectRowWheel(event, folderId, element);
-      element.addEventListener('wheel', nextHandler, { passive: false });
-      projectRowWheelHandlers.current.set(folderId, nextHandler);
     }
 
     projectRowRefs.current.set(folderId, element);
@@ -449,20 +351,6 @@ export function ProjectsPage() {
     });
   }
 
-  function showProjectRowLimit(folderId: string, edge: 'left' | 'right') {
-    setProjectRowLimitFeedback({ folderId, edge });
-
-    if (projectRowLimitFeedbackTimeout.current) {
-      window.clearTimeout(projectRowLimitFeedbackTimeout.current);
-    }
-
-    projectRowLimitFeedbackTimeout.current = window.setTimeout(() => {
-      setProjectRowLimitFeedback((current) =>
-        current?.folderId === folderId && current.edge === edge ? null : current,
-      );
-    }, 420);
-  }
-
   function getProjectRowShellClassName(folderId: string) {
     const classNames = ['project-row-shell'];
     const hints = projectRowHints[folderId];
@@ -473,10 +361,6 @@ export function ProjectsPage() {
 
     if (hints?.right) {
       classNames.push('project-row-has-more-right');
-    }
-
-    if (projectRowLimitFeedback?.folderId === folderId) {
-      classNames.push(`project-row-scroll-limit-${projectRowLimitFeedback.edge}`);
     }
 
     return classNames.join(' ');
