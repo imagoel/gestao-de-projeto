@@ -5,6 +5,7 @@ import type { CardComment } from '../../types/api';
 
 type ChecklistReference = {
   done: boolean;
+  id: string;
   number: number;
   title: string;
 };
@@ -25,7 +26,7 @@ type CardCommentsSectionProps = {
   title?: string;
   onCreate: (content: string) => Promise<unknown>;
   onDelete?: (commentId: string) => Promise<unknown>;
-  onReferenceClick?: (referenceNumber: number) => void;
+  onReferenceClick?: (referenceId: string) => void;
   onUpdate?: (commentId: string, content: string) => Promise<unknown>;
 };
 
@@ -51,9 +52,29 @@ export function CardCommentsSection({
   const [draftComment, setDraftComment] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState('');
+  const referencesById = new Map(
+    checklistReferences.map((reference) => [reference.id, reference]),
+  );
   const referencesByNumber = new Map(
     checklistReferences.map((reference) => [reference.number, reference]),
   );
+
+  function encodeChecklistReferences(content: string) {
+    return content.replace(/@(\d+)\b/g, (match, rawNumber: string) => {
+      const reference = referencesByNumber.get(Number(rawNumber));
+      return reference ? `@[checklist:${reference.id}]` : match;
+    });
+  }
+
+  function decodeChecklistReferences(content: string) {
+    return content.replace(
+      /@\[checklist:([a-zA-Z0-9-]+)\]/g,
+      (match, referenceId: string) => {
+        const reference = referencesById.get(referenceId);
+        return reference ? `@${reference.number}` : match;
+      },
+    );
+  }
 
   async function handleCreate() {
     const content = draftComment.trim();
@@ -62,7 +83,7 @@ export function CardCommentsSection({
       return;
     }
 
-    await onCreate(content);
+    await onCreate(encodeChecklistReferences(content));
     setDraftComment('');
   }
 
@@ -73,7 +94,7 @@ export function CardCommentsSection({
       return;
     }
 
-    await onUpdate(commentId, content);
+    await onUpdate(commentId, encodeChecklistReferences(content));
     setEditingCommentId(null);
     setEditingDraft('');
   }
@@ -91,35 +112,40 @@ export function CardCommentsSection({
   }
 
   function renderContent(content: string) {
-    return content.split(/(@\d+)/g).map((part, index) => {
-      const match = /^@(\d+)$/.exec(part);
+    return content
+      .split(/(@\[checklist:[a-zA-Z0-9-]+\]|@\d+)/g)
+      .map((part, index) => {
+        const tokenMatch = /^@\[checklist:([a-zA-Z0-9-]+)\]$/.exec(part);
+        const numberMatch = /^@(\d+)$/.exec(part);
 
-      if (!match) {
-        return part;
-      }
+        if (!tokenMatch && !numberMatch) {
+          return part;
+        }
 
-      const reference = referencesByNumber.get(Number(match[1]));
+        const reference = tokenMatch
+          ? referencesById.get(tokenMatch[1])
+          : referencesByNumber.get(Number(numberMatch?.[1]));
 
-      if (!reference) {
-        return part;
-      }
+        if (!reference) {
+          return part;
+        }
 
-      return (
-        <button
-          className={
-            reference.done
-              ? 'checklist-reference checklist-reference-done'
-              : 'checklist-reference'
-          }
-          key={`${part}-${index}`}
-          onClick={() => onReferenceClick?.(reference.number)}
-          title={`Checklist ${reference.number}: ${reference.title}`}
-          type="button"
-        >
-          {part}
-        </button>
-      );
-    });
+        return (
+          <button
+            className={
+              reference.done
+                ? 'checklist-reference checklist-reference-done'
+                : 'checklist-reference'
+            }
+            key={`${part}-${index}`}
+            onClick={() => onReferenceClick?.(reference.id)}
+            title={`Checklist ${reference.number}: ${reference.title}`}
+            type="button"
+          >
+            @{reference.number}
+          </button>
+        );
+      });
   }
 
   return (
@@ -187,7 +213,7 @@ export function CardCommentsSection({
                     disabled={isBusy}
                     onClick={() => {
                       setEditingCommentId(comment.id);
-                      setEditingDraft(comment.content);
+                      setEditingDraft(decodeChecklistReferences(comment.content));
                     }}
                     type="button"
                   >

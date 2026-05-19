@@ -631,6 +631,10 @@ textarea {
   align-content: start;
 }
 
+.board-column-completed {
+  opacity: 0.98;
+}
+
 .board-column-body {
   --board-scroll-hint-shadow: none;
   --board-scroll-limit-shadow: none;
@@ -745,9 +749,27 @@ textarea {
   border-color: #9db1c8;
 }
 
+.task-card-completed {
+  gap: 5px;
+  padding: 8px 10px;
+  border-color: #dedbd2;
+  background: #f3f2ee;
+  color: #77736b;
+  box-shadow: none;
+}
+
+.task-card-button.task-card-completed:hover {
+  transform: none;
+  border-color: #d5d1c8;
+}
+
 .task-card-dragging {
   opacity: 0.5;
   border-style: dashed;
+}
+
+.task-card-completed.task-card-dragging {
+  opacity: 0.62;
 }
 
 .task-card-title {
@@ -758,11 +780,25 @@ textarea {
   min-width: 0;
 }
 
+.task-card-completed .task-card-title {
+  color: #77736b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: line-through;
+  text-decoration-color: rgba(111, 107, 99, 0.55);
+  text-decoration-thickness: 1px;
+}
+
 .task-card-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+}
+
+.task-card-completed .task-card-top {
+  align-items: center;
+  gap: 8px;
 }
 
 .task-card-top-actions {
@@ -777,6 +813,10 @@ textarea {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.task-card-completed .task-card-main {
+  gap: 0;
 }
 
 .task-card-assignees {
@@ -819,8 +859,18 @@ textarea {
   font-size: 0.76rem;
 }
 
+.task-card-completed .badge {
+  background: #e5e3dc;
+  color: #77736b;
+}
+
 .task-card-rename {
   margin-left: 2px;
+}
+
+.task-card-completed .task-card-rename {
+  color: #8f8980;
+  opacity: 0.72;
 }
 
 .task-due {

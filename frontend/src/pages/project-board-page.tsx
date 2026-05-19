@@ -71,6 +71,16 @@ const PRIORITY_WEIGHT: Record<CardPriority, number> = {
   LOW: 3,
 };
 
+function isCompletedColumnTitle(title: string) {
+  return (
+    title
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase() === "concluido"
+  );
+}
+
 function getInitials(name?: string | null) {
   if (!name) {
     return '--';
@@ -680,6 +690,7 @@ export function ProjectBoardPage() {
   const checklistItems = checklistQuery.data ?? [];
   const checklistReferences = checklistItems.map((item, index) => ({
     done: item.done,
+    id: item.id,
     number: index + 1,
     title: item.title,
   }));
@@ -728,9 +739,9 @@ export function ProjectBoardPage() {
     await deleteChecklistItemMutation.mutateAsync(item.id);
   }
 
-  function handleChecklistReferenceClick(referenceNumber: number) {
+  function handleChecklistReferenceClick(referenceId: string) {
     const checklistItem = document.querySelector<HTMLElement>(
-      `[data-checklist-item-number="${referenceNumber}"]`,
+      `[data-checklist-item-id="${referenceId}"]`,
     );
 
     if (!checklistItem) {
@@ -1075,8 +1086,18 @@ export function ProjectBoardPage() {
       !boardQuery.isError ? (
         columns.length > 0 ? (
           <section className="board-grid">
-            {columns.map((column) => (
-              <article className="board-column" key={column.id}>
+            {columns.map((column) => {
+              const isCompletedColumn = isCompletedColumnTitle(column.title);
+
+              return (
+                <article
+                  className={
+                    isCompletedColumn
+                      ? "board-column board-column-completed"
+                      : "board-column"
+                  }
+                  key={column.id}
+                >
                 <div className="board-column-header">
                   {editingColumnId === column.id ? (
                     <form
@@ -1212,11 +1233,11 @@ export function ProjectBoardPage() {
                       {column.cards.map((card, index) => (
                         <div key={card.id}>
                           <button
-                            className={
+                            className={`${
                               dragCard?.cardId === card.id
                                 ? "task-card task-card-button task-card-dragging"
                                 : "task-card task-card-button"
-                            }
+                            }${isCompletedColumn ? " task-card-completed" : ""}`}
                             data-board-card-id={card.id}
                             draggable={canEditProject}
                             onClick={() => openCardDetails(card.id)}
@@ -1233,7 +1254,7 @@ export function ProjectBoardPage() {
                                 {formatPriority(card.priority)}
                               </span>
                               <div className="task-card-top-actions">
-                                {card.dueDate ? (
+                                {card.dueDate && !isCompletedColumn ? (
                                   <span className={getDueDateTone(card.dueDate)}>
                                     {formatShortDate(card.dueDate)}
                                   </span>
@@ -1269,17 +1290,19 @@ export function ProjectBoardPage() {
                             </div>
                             <div className="task-card-main">
                               <h2 className="task-card-title">{card.title}</h2>
-                              <div className="task-card-assignees">
-                                <div
-                                  className="task-card-avatar"
-                                  title={card.assignee?.name ?? "Sem responsavel"}
-                                >
-                                  <TaskCardAvatar
-                                    avatarUrl={card.assignee?.avatarUrl}
-                                    name={card.assignee?.name}
-                                  />
+                              {!isCompletedColumn ? (
+                                <div className="task-card-assignees">
+                                  <div
+                                    className="task-card-avatar"
+                                    title={card.assignee?.name ?? "Sem responsavel"}
+                                  >
+                                    <TaskCardAvatar
+                                      avatarUrl={card.assignee?.avatarUrl}
+                                      name={card.assignee?.name}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
+                              ) : null}
                             </div>
                           </button>
                           <div
@@ -1305,8 +1328,9 @@ export function ProjectBoardPage() {
                     </div>
                   )}
                 </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </section>
         ) : (
           <StatusState
