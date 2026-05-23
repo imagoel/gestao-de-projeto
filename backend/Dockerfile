@@ -7,7 +7,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY tsconfig*.json nest-cli.json ./
 COPY prisma ./prisma
@@ -19,5 +19,7 @@ RUN npm run build
 ENV NODE_ENV=production
 
 EXPOSE 3000
+
+USER node
 
 CMD ["npm", "run", "start:container"]

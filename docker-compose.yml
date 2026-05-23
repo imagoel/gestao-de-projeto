@@ -19,7 +19,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_HOST_PORT:-35432}:5432"           # remova ou restrinja em produção
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-35432}:5432" # acesso local ao host; nao expor em producao
     networks:
       - gestao_network
     healthcheck:
@@ -50,7 +50,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
     ports:
-      - "${API_HOST_PORT:-13000}:3000"
+      - "127.0.0.1:${API_HOST_PORT:-13000}:3000"
     networks:
       - gestao_network
     healthcheck:

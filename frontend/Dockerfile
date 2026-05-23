@@ -6,7 +6,7 @@ ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY tsconfig*.json vite.config.ts index.html ./
 COPY src ./src
