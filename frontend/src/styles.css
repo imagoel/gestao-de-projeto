@@ -1,3 +1,5 @@
+@import "./styles/board.css";
+
 :root {
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #171717;
@@ -616,274 +618,6 @@ textarea {
 .badge-red {
   background: #fbe8e6;
   color: #8c2f25;
-}
-
-.board-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  align-items: start;
-  gap: 14px;
-}
-
-.board-column {
-  display: grid;
-  gap: 6px;
-  align-content: start;
-}
-
-.board-column-completed {
-  opacity: 0.98;
-}
-
-.board-column-body {
-  --board-scroll-hint-shadow: none;
-  --board-scroll-limit-shadow: none;
-  display: grid;
-  gap: 8px;
-  max-height: calc(100vh - 230px);
-  min-height: 84px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 2px 0 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  scrollbar-width: none;
-  box-shadow: var(--board-scroll-hint-shadow), var(--board-scroll-limit-shadow);
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.22s ease;
-}
-
-.board-column-body::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.board-column-body-active {
-  background: transparent;
-}
-
-.board-column-has-more-bottom {
-  --board-scroll-hint-shadow:
-    inset 0 -58px 36px -28px rgba(51, 154, 128, 0.74),
-    inset 0 -22px 18px -18px rgba(158, 36, 61, 0.3);
-}
-
-.board-column-scroll-limit-top {
-  --board-scroll-limit-shadow: inset 0 18px 18px -20px rgba(24, 95, 165, 0.7);
-}
-
-.board-column-scroll-limit-bottom {
-  --board-scroll-limit-shadow:
-    inset 0 -58px 36px -28px rgba(51, 154, 128, 0.78),
-    inset 0 -22px 18px -18px rgba(158, 36, 61, 0.32);
-}
-
-.board-inline-note,
-.board-inline-error {
-  margin-bottom: 12px;
-}
-
-.board-column-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 12px;
-  border: 1px solid #e1dbcf;
-  border-radius: 10px;
-  background: #ebe6da;
-  font-weight: 600;
-}
-
-.board-column-header-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.board-column-title-form {
-  flex: 1;
-}
-
-.board-column-title-input {
-  padding: 6px 10px;
-  font-size: 0.9rem;
-}
-
-.board-column-title-editable {
-  cursor: pointer;
-}
-
-.board-column-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #5d5a54;
-  font-size: 0.84rem;
-}
-
-.board-drop-zone {
-  min-height: 4px;
-  border-radius: 999px;
-  transition: background-color 0.2s ease, min-height 0.2s ease;
-}
-
-.board-drop-zone-top {
-  min-height: 0;
-}
-
-.board-drop-zone-active {
-  min-height: 18px;
-  background: rgba(24, 95, 165, 0.14);
-}
-
-.task-card {
-  display: grid;
-  gap: 6px;
-  padding: 11px 12px;
-  border: 1px solid #d9d3c7;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.task-card-button {
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease;
-}
-
-.task-card-button:hover {
-  transform: translateY(-1px);
-  border-color: #9db1c8;
-}
-
-.task-card-completed {
-  gap: 5px;
-  padding: 8px 10px;
-  border-color: #dedbd2;
-  background: #f3f2ee;
-  color: #77736b;
-  box-shadow: none;
-}
-
-.task-card-button.task-card-completed:hover {
-  transform: none;
-  border-color: #d5d1c8;
-}
-
-.task-card-dragging {
-  opacity: 0.5;
-  border-style: dashed;
-}
-
-.task-card-completed.task-card-dragging {
-  opacity: 0.62;
-}
-
-.task-card-title {
-  margin: 0;
-  font-size: 0.98rem;
-  line-height: 1.35;
-  flex: 1;
-  min-width: 0;
-}
-
-.task-card-completed .task-card-title {
-  color: #77736b;
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-decoration: line-through;
-  text-decoration-color: rgba(111, 107, 99, 0.55);
-  text-decoration-thickness: 1px;
-}
-
-.task-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.task-card-completed .task-card-top {
-  align-items: center;
-  gap: 8px;
-}
-
-.task-card-top-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.task-card-main {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.task-card-completed .task-card-main {
-  gap: 0;
-}
-
-.task-card-assignees {
-  display: inline-flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.task-card-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: #e6f1fb;
-  color: #12477c;
-  border: 1px solid #d5e5f8;
-}
-
-.task-card-avatar-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.task-card-avatar-fallback {
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.task-card .badge {
-  padding: 3px 8px;
-  border-radius: 10px;
-  font-size: 0.76rem;
-}
-
-.task-card-completed .badge {
-  background: #e5e3dc;
-  color: #77736b;
-}
-
-.task-card-rename {
-  margin-left: 2px;
-}
-
-.task-card-completed .task-card-rename {
-  color: #8f8980;
-  opacity: 0.72;
 }
 
 .task-due {
@@ -1786,47 +1520,6 @@ textarea {
   min-height: 96px;
 }
 
-.archived-card-list {
-  display: grid;
-  gap: 12px;
-}
-
-.archived-card-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: center;
-  padding: 16px;
-  border: 1px solid #e6e1d7;
-  border-radius: 16px;
-  background: #fbfaf7;
-}
-
-.archived-card-main {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-}
-
-.archived-card-title {
-  margin: 0;
-  font-size: 1rem;
-  color: #1f1d1a;
-}
-
-.archived-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  color: #6f6b63;
-  font-size: 0.88rem;
-}
-
-.archived-card-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .stack {
   display: grid;
   gap: 16px;
@@ -1846,16 +1539,8 @@ textarea {
     border-bottom: 1px solid #d4d1c7;
   }
 
-  .board-grid,
   .detail-grid {
     grid-template-columns: 1fr;
-  }
-
-  .board-column-body {
-    max-height: none;
-    overflow-y: visible;
-    overscroll-behavior: auto;
-    box-shadow: none;
   }
 
   .users-toolbar {
@@ -1871,14 +1556,12 @@ textarea {
   .form-row,
   .form-row-3,
   .checklist-item,
-  .archived-card-item,
   .inline-form,
   .comment-header {
     grid-template-columns: 1fr;
   }
 
   .checklist-item,
-  .archived-card-item,
   .inline-form,
   .comment-header {
     display: grid;
