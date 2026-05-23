@@ -1,32 +1,29 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   type DragEvent,
   type FormEvent,
-  type UIEvent,
-  type WheelEvent,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
 import { useAuth } from "../app/auth-provider";
-import {
-  formatDateTime,
-  formatPriority,
-  formatShortDate,
-  getDueDateTone,
-  getPriorityTone,
-  toDateInputValue,
-} from "../app/formatters";
+import { toDateInputValue } from "../app/formatters";
 import { AppShell } from "../components/app-shell";
-import { Modal } from "../components/modal";
 import { StatusState } from "../components/status-state";
-import { CardChecklistSection } from "../features/cards/card-checklist-section";
-import { CardCommentsSection } from "../features/cards/card-comments-section";
+import { ArchivedCardsModal } from "../features/board/archived-cards-modal";
+import { BoardColumn as BoardColumnView } from "../features/board/board-column";
+import {
+  isCompletedColumnTitle,
+  sortColumnCards,
+} from "../features/board/board-utils";
+import { CardDetailModal } from "../features/board/card-detail-modal";
+import { CreateCardModal } from "../features/board/create-card-modal";
+import { NewColumnModal } from "../features/board/new-column-modal";
+import { useBoardColumnScroll } from "../features/board/use-board-column-scroll";
 import { ApiError, api } from "../services/api";
-import type { BoardColumn, CardPriority, ChecklistItem } from "../types/api";
+import type { BoardCard, BoardColumn, CardPriority, ChecklistItem } from "../types/api";
 
 type CreateCardFormState = {
   assigneeId: string;
@@ -64,60 +61,6 @@ const priorityOptions: CardPriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 // Hidden for the current MVP; toggle to re-enable in the future.
 const SHOW_COLUMN_MANAGEMENT = false;
 
-const PRIORITY_WEIGHT: Record<CardPriority, number> = {
-  CRITICAL: 0,
-  HIGH: 1,
-  MEDIUM: 2,
-  LOW: 3,
-};
-
-function isCompletedColumnTitle(title: string) {
-  return (
-    title
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim()
-      .toLowerCase() === "concluido"
-  );
-}
-
-function getInitials(name?: string | null) {
-  if (!name) {
-    return '--';
-  }
-
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('');
-}
-
-type TaskCardAvatarProps = {
-  avatarUrl?: string | null;
-  name?: string | null;
-};
-
-function TaskCardAvatar({ avatarUrl, name }: TaskCardAvatarProps) {
-  const [hasImageError, setHasImageError] = useState(false);
-  const initials = getInitials(name);
-
-  if (avatarUrl && !hasImageError) {
-    return (
-      <img
-        alt={name ? `Avatar de ${name}` : 'Avatar do responsavel'}
-        className="task-card-avatar-image"
-        loading="lazy"
-        onError={() => setHasImageError(true)}
-        src={avatarUrl}
-      />
-    );
-  }
-
-  return <span className="task-card-avatar-fallback">{initials}</span>;
-}
-
 type DragCardState = {
   cardId: string;
   sourceColumnId: string;
@@ -151,15 +94,6 @@ export function ProjectBoardPage() {
   const [newColumnTitle, setNewColumnTitle] = useState('');
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [columnError, setColumnError] = useState<string | null>(null);
-  const [scrollLimitFeedback, setScrollLimitFeedback] = useState<{
-    columnId: string;
-    edge: "top" | "bottom";
-  } | null>(null);
-  const [columnScrollHints, setColumnScrollHints] = useState<Record<string, boolean>>(
-    {},
-  );
-  const columnBodyRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const scrollLimitFeedbackTimeout = useRef<number | null>(null);
 
   const projectQuery = useQuery({
     queryKey: ["project", projectId],
@@ -203,20 +137,15 @@ export function ProjectBoardPage() {
       .map((member) => member.user) ?? [];
   const columns = useMemo(() => {
     const rawColumns = boardQuery.data?.columns ?? [];
-    return rawColumns.map((column) => ({
-      ...column,
-      cards: [...column.cards].sort((firstCard, secondCard) => {
-        const priorityDifference =
-          PRIORITY_WEIGHT[firstCard.priority] - PRIORITY_WEIGHT[secondCard.priority];
-
-        if (priorityDifference !== 0) {
-          return priorityDifference;
-        }
-
-        return firstCard.position - secondCard.position;
-      }),
-    }));
+    return sortColumnCards(rawColumns);
   }, [boardQuery.data?.columns]);
+  const {
+    getColumnScrollClassNames,
+    handleColumnScroll,
+    handleColumnWheel,
+    registerColumnBody,
+    showColumnScrollLimit,
+  } = useBoardColumnScroll(columns);
   const currentProjectMember = projectQuery.data?.members.find(
     (member) => member.user.id === user?.id,
   );
@@ -257,25 +186,6 @@ export function ProjectBoardPage() {
     setEditError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardQuery.data?.id]);
-
-  useEffect(() => {
-    return () => {
-      if (scrollLimitFeedbackTimeout.current) {
-        window.clearTimeout(scrollLimitFeedbackTimeout.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      columnBodyRefs.current.forEach((element, columnId) => {
-        updateColumnScrollHint(element, columnId);
-      });
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns]);
 
   const createCardMutation = useMutation({
     mutationFn: () =>
@@ -910,84 +820,39 @@ export function ProjectBoardPage() {
       classNames.push("board-column-body-active");
     }
 
-    if (scrollLimitFeedback?.columnId === columnId) {
-      classNames.push(`board-column-scroll-limit-${scrollLimitFeedback.edge}`);
-    }
-
-    if (columnScrollHints[columnId]) {
-      classNames.push("board-column-has-more-bottom");
-    }
+    classNames.push(...getColumnScrollClassNames(columnId));
 
     return classNames.join(" ");
   }
 
-  function updateColumnScrollHint(element: HTMLDivElement, columnId: string) {
-    const hasScrollableContent = element.scrollHeight > element.clientHeight + 1;
-    const hasMoreBelow =
-      hasScrollableContent &&
-      element.scrollTop + element.clientHeight < element.scrollHeight - 1;
+  function handleStartEditingColumn(column: BoardColumn) {
+    setEditingColumnId(column.id);
+    setEditingColumnTitle(column.title);
+  }
 
-    setColumnScrollHints((current) => {
-      if (current[columnId] === hasMoreBelow) {
-        return current;
-      }
+  function handleRenameColumn(columnId: string, title: string) {
+    void renameColumnMutation.mutateAsync({ columnId, title });
+  }
 
-      return {
-        ...current,
-        [columnId]: hasMoreBelow,
-      };
+  function handleDeleteColumn(column: BoardColumn) {
+    if (
+      window.confirm(
+        `Remover a coluna "${column.title}"? Cards ativos impedem a remocao.`,
+      )
+    ) {
+      void deleteColumnMutation.mutateAsync(column.id);
+    }
+  }
+
+  function handleRenameCard(card: BoardCard, title: string) {
+    void renameCardMutation.mutateAsync({
+      cardId: card.id,
+      title,
+      assigneeId: card.assignee?.id ?? "",
+      priority: card.priority,
+      description: card.description,
+      dueDate: card.dueDate,
     });
-  }
-
-  function registerColumnBody(columnId: string, element: HTMLDivElement | null) {
-    if (!element) {
-      columnBodyRefs.current.delete(columnId);
-      return;
-    }
-
-    columnBodyRefs.current.set(columnId, element);
-    window.requestAnimationFrame(() => updateColumnScrollHint(element, columnId));
-  }
-
-  function showColumnScrollLimit(columnId: string, edge: "top" | "bottom") {
-    setScrollLimitFeedback({ columnId, edge });
-
-    if (scrollLimitFeedbackTimeout.current) {
-      window.clearTimeout(scrollLimitFeedbackTimeout.current);
-    }
-
-    scrollLimitFeedbackTimeout.current = window.setTimeout(() => {
-      setScrollLimitFeedback((current) =>
-        current?.columnId === columnId && current.edge === edge ? null : current,
-      );
-    }, 420);
-  }
-
-  function handleColumnWheel(event: WheelEvent<HTMLDivElement>, columnId: string) {
-    const element = event.currentTarget;
-    const hasScrollableContent = element.scrollHeight > element.clientHeight + 1;
-
-    if (!hasScrollableContent) {
-      return;
-    }
-
-    const isAtTop = element.scrollTop <= 0;
-    const isAtBottom =
-      element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
-
-    if (event.deltaY < 0 && isAtTop) {
-      event.preventDefault();
-      showColumnScrollLimit(columnId, "top");
-    }
-
-    if (event.deltaY > 0 && isAtBottom) {
-      event.preventDefault();
-      showColumnScrollLimit(columnId, "bottom");
-    }
-  }
-
-  function handleColumnScroll(event: UIEvent<HTMLDivElement>, columnId: string) {
-    updateColumnScrollHint(event.currentTarget, columnId);
   }
 
   return (
@@ -1086,251 +951,48 @@ export function ProjectBoardPage() {
       !boardQuery.isError ? (
         columns.length > 0 ? (
           <section className="board-grid">
-            {columns.map((column) => {
-              const isCompletedColumn = isCompletedColumnTitle(column.title);
-
-              return (
-                <article
-                  className={
-                    isCompletedColumn
-                      ? "board-column board-column-completed"
-                      : "board-column"
-                  }
-                  key={column.id}
-                >
-                <div className="board-column-header">
-                  {editingColumnId === column.id ? (
-                    <form
-                      className="inline-form"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (editingColumnTitle.trim()) {
-                          void renameColumnMutation.mutateAsync({
-                            columnId: column.id,
-                            title: editingColumnTitle.trim(),
-                          });
-                        }
-                      }}
-                      style={{ flex: 1 }}
-                    >
-                      <input
-                        autoFocus
-                        className="field-input"
-                        onChange={(e) => setEditingColumnTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") setEditingColumnId(null);
-                        }}
-                        style={{ padding: "6px 10px", fontSize: "0.9rem" }}
-                        type="text"
-                        value={editingColumnTitle}
-                      />
-                      <button className="text-button" type="submit">
-                        OK
-                      </button>
-                    </form>
-                  ) : (
-                    <span
-                      onDoubleClick={() => {
-                        if (canEditProject) {
-                          setEditingColumnId(column.id);
-                          setEditingColumnTitle(column.title);
-                        }
-                      }}
-                      style={{ cursor: canEditProject ? "pointer" : "default" }}
-                      title={canEditProject ? "Duplo clique para renomear" : ""}
-                    >
-                      {column.title}
-                    </span>
-                  )}
-                  <div className="board-column-header-actions">
-                    {SHOW_COLUMN_MANAGEMENT && canEditProject && columns.length > 1 ? (
-                      <>
-                        {column.position > 0 ? (
-                          <button
-                            className="text-button"
-                            disabled={reorderColumnMutation.isPending}
-                            onClick={() =>
-                              void reorderColumnMutation.mutateAsync({
-                                columnId: column.id,
-                                targetPosition: column.position - 1,
-                              })
-                            }
-                            title="Mover para esquerda"
-                            type="button"
-                          >
-                            &larr;
-                          </button>
-                        ) : null}
-                        {column.position < columns.length - 1 ? (
-                          <button
-                            className="text-button"
-                            disabled={reorderColumnMutation.isPending}
-                            onClick={() =>
-                              void reorderColumnMutation.mutateAsync({
-                                columnId: column.id,
-                                targetPosition: column.position + 1,
-                              })
-                            }
-                            title="Mover para direita"
-                            type="button"
-                          >
-                            &rarr;
-                          </button>
-                        ) : null}
-                      </>
-                    ) : null}
-                    <span className="board-column-count">
-                      {column.cards.length}
-                    </span>
-                    <button
-                      className="text-button"
-                      disabled={!canEditProject}
-                      onClick={() => openCreateCardModal(column.id)}
-                      type="button"
-                    >
-                      + Card
-                    </button>
-                    {canEditProject ? (
-                      <button
-                        className="text-button"
-                        disabled={deleteColumnMutation.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Remover a coluna "${column.title}"? Cards ativos impedem a remocao.`,
-                            )
-                          ) {
-                            void deleteColumnMutation.mutateAsync(column.id);
-                          }
-                        }}
-                        style={{ color: "#8c2f25" }}
-                        title="Remover coluna"
-                        type="button"
-                      >
-                        x
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div
-                  className={getColumnBodyClassName(column.id)}
-                  onDragOver={(event) => handleColumnDragOver(event, column)}
-                  onDrop={(event) => void handleColumnDrop(event, column)}
-                  onScroll={(event) => handleColumnScroll(event, column.id)}
-                  onWheel={(event) => handleColumnWheel(event, column.id)}
-                  ref={(element) => registerColumnBody(column.id, element)}
-                >
-                  {column.cards.length > 0 ? (
-                    <>
-                      <div
-                        className={getDropZoneClassName(column.id, 0)}
-                        onDragOver={(event) =>
-                          handleDropTargetDragOver(event, column.id, 0)
-                        }
-                        onDrop={(event) => void handleDrop(event, column.id, 0)}
-                      />
-                      {column.cards.map((card, index) => (
-                        <div key={card.id}>
-                          <button
-                            className={`${
-                              dragCard?.cardId === card.id
-                                ? "task-card task-card-button task-card-dragging"
-                                : "task-card task-card-button"
-                            }${isCompletedColumn ? " task-card-completed" : ""}`}
-                            data-board-card-id={card.id}
-                            draggable={canEditProject}
-                            onClick={() => openCardDetails(card.id)}
-                            onDragEnd={handleDragEnd}
-                            onDragStart={() =>
-                              handleDragStart(card.id, column.id, index)
-                            }
-                            type="button"
-                          >
-                            <div className="task-card-top">
-                              <span
-                                className={`badge ${getPriorityTone(card.priority)}`}
-                              >
-                                {formatPriority(card.priority)}
-                              </span>
-                              <div className="task-card-top-actions">
-                                {card.dueDate && !isCompletedColumn ? (
-                                  <span className={getDueDateTone(card.dueDate)}>
-                                    {formatShortDate(card.dueDate)}
-                                  </span>
-                                ) : null}
-                                {canEditProject ? (
-                                  <span
-                                    aria-label="Renomear card"
-                                    className="task-card-rename"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      const next = window.prompt(
-                                        "Novo nome do card:",
-                                        card.title,
-                                      );
-                                      const trimmed = next?.trim();
-                                      if (!trimmed || trimmed === card.title) return;
-                                      void renameCardMutation.mutateAsync({
-                                        cardId: card.id,
-                                        title: trimmed,
-                                        assigneeId: card.assignee?.id ?? "",
-                                        priority: card.priority,
-                                        description: card.description,
-                                        dueDate: card.dueDate,
-                                      });
-                                    }}
-                                    role="button"
-                                    title="Renomear card"
-                                  >
-                                    ✎
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                            <div className="task-card-main">
-                              <h2 className="task-card-title">{card.title}</h2>
-                              {!isCompletedColumn ? (
-                                <div className="task-card-assignees">
-                                  <div
-                                    className="task-card-avatar"
-                                    title={card.assignee?.name ?? "Sem responsavel"}
-                                  >
-                                    <TaskCardAvatar
-                                      avatarUrl={card.assignee?.avatarUrl}
-                                      name={card.assignee?.name}
-                                    />
-                                  </div>
-                                </div>
-                              ) : null}
-                            </div>
-                          </button>
-                          <div
-                            className={getDropZoneClassName(column.id, index + 1)}
-                            onDragOver={(event) =>
-                              handleDropTargetDragOver(
-                                event,
-                                column.id,
-                                index + 1,
-                              )
-                            }
-                            onDrop={(event) =>
-                              void handleDrop(event, column.id, index + 1)
-                            }
-                          />
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <div className="task-empty">
-                      Nenhum card nesta coluna ainda. Use o botao acima para
-                      cadastrar o primeiro.
-                    </div>
-                  )}
-                </div>
-                </article>
-              );
-            })}
+            {columns.map((column) => (
+              <BoardColumnView
+                canEditProject={canEditProject}
+                column={column}
+                columnCount={columns.length}
+                dragCardId={dragCard?.cardId}
+                editingColumnId={editingColumnId}
+                editingColumnTitle={editingColumnTitle}
+                getColumnBodyClassName={getColumnBodyClassName}
+                getDropZoneClassName={getDropZoneClassName}
+                isColumnActionPending={
+                  deleteColumnMutation.isPending ||
+                  reorderColumnMutation.isPending
+                }
+                isCompletedColumn={isCompletedColumnTitle(column.title)}
+                key={column.id}
+                registerColumnBody={registerColumnBody}
+                showColumnManagement={SHOW_COLUMN_MANAGEMENT}
+                onCancelEditingColumn={() => setEditingColumnId(null)}
+                onCardDragEnd={handleDragEnd}
+                onChangeEditingColumnTitle={setEditingColumnTitle}
+                onColumnDragOver={handleColumnDragOver}
+                onColumnDrop={handleColumnDrop}
+                onColumnScroll={handleColumnScroll}
+                onColumnWheel={handleColumnWheel}
+                onDeleteColumn={handleDeleteColumn}
+                onDrop={handleDrop}
+                onDropZoneDragOver={handleDropTargetDragOver}
+                onOpenCard={openCardDetails}
+                onOpenCreateCard={openCreateCardModal}
+                onRenameCard={handleRenameCard}
+                onRenameColumn={handleRenameColumn}
+                onReorderColumn={(columnId, targetPosition) =>
+                  void reorderColumnMutation.mutateAsync({
+                    columnId,
+                    targetPosition,
+                  })
+                }
+                onStartCardDrag={handleDragStart}
+                onStartEditingColumn={handleStartEditingColumn}
+              />
+            ))}
           </section>
         ) : (
           <StatusState
@@ -1340,509 +1002,99 @@ export function ProjectBoardPage() {
         )
       ) : null}
 
-      <Modal
-        title="Nova coluna"
-        description="Adicione uma nova coluna ao quadro Kanban."
-        open={isAddColumnOpen}
+      <NewColumnModal
+        errorMessage={columnError}
+        isCreating={addColumnMutation.isPending}
+        onChangeTitle={setNewColumnTitle}
         onClose={() => setIsAddColumnOpen(false)}
-        footer={
-          <>
-            <button
-              className="secondary-button"
-              onClick={() => setIsAddColumnOpen(false)}
-              type="button"
-            >
-              Cancelar
-            </button>
-            <button
-              className="primary-button"
-              disabled={addColumnMutation.isPending || !newColumnTitle.trim()}
-              onClick={() => void addColumnMutation.mutateAsync(newColumnTitle.trim())}
-              type="button"
-            >
-              {addColumnMutation.isPending ? "Criando..." : "Criar coluna"}
-            </button>
-          </>
-        }
-      >
-        <div className="form-grid">
-          <div className="field-group">
-            <label className="field-label" htmlFor="new-column-title">
-              Nome da coluna
-            </label>
-            <input
-              autoFocus
-              className="field-input"
-              id="new-column-title"
-              onChange={(e) => setNewColumnTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newColumnTitle.trim()) {
-                  e.preventDefault();
-                  void addColumnMutation.mutateAsync(newColumnTitle.trim());
-                }
-              }}
-              type="text"
-              value={newColumnTitle}
-            />
-          </div>
-          {columnError ? <p className="form-error">{columnError}</p> : null}
-        </div>
-      </Modal>
+        onCreate={(title) => void addColumnMutation.mutateAsync(title)}
+        open={isAddColumnOpen}
+        title={newColumnTitle}
+      />
 
-      <Modal
-        title="Cards arquivados"
-        description="Cards concluidos ou retirados do fluxo atual ficam guardados aqui para consulta e restauracao."
-        footer={
-          <button
-            className="secondary-button"
-            onClick={() => setIsArchivedModalOpen(false)}
-            type="button"
-          >
-            Fechar
-          </button>
-        }
+      <ArchivedCardsModal
+        canEditProject={canEditProject}
+        cards={archivedCards}
+        errorMessage={archivedCardsErrorMessage}
+        isLoading={archivedCardsQuery.isLoading}
+        isRestoring={restoreCardMutation.isPending}
         onClose={() => setIsArchivedModalOpen(false)}
+        onRestore={(cardId) => void restoreCardMutation.mutateAsync(cardId)}
         open={isArchivedModalOpen}
-      >
-        <div className="card-detail-stack">
-          {archivedCardsQuery.isLoading ? (
-            <StatusState
-              tone="loading"
-              title="Carregando arquivados"
-              copy="Estamos reunindo os cards arquivados deste projeto."
-            />
-          ) : null}
+      />
 
-          {archivedCardsErrorMessage ? (
-            <StatusState
-              tone="error"
-              title="Nao foi possivel carregar os arquivados"
-              copy={archivedCardsErrorMessage}
-            />
-          ) : null}
-
-          {!archivedCardsQuery.isLoading && !archivedCardsErrorMessage ? (
-            archivedCards.length > 0 ? (
-              <div className="archived-card-list">
-                {archivedCards.map((card) => (
-                  <article className="archived-card-item" key={card.id}>
-                    <div className="archived-card-main">
-                      <div className="badge-row">
-                        <span className={`badge ${getPriorityTone(card.priority)}`}>
-                          {formatPriority(card.priority)}
-                        </span>
-                        <span className="badge badge-gray">
-                          Coluna original: {card.column.title ?? "Sem coluna"}
-                        </span>
-                      </div>
-                      <h3 className="archived-card-title">{card.title}</h3>
-                      <div className="archived-card-meta">
-                        <span>Responsavel: {card.assignee?.name ?? "Sem responsavel"}</span>
-                        <span className={getDueDateTone(card.dueDate)}>
-                          {formatShortDate(card.dueDate)}
-                        </span>
-                        <span>Arquivado em {formatDateTime(card.updatedAt)}</span>
-                      </div>
-                    </div>
-                    <div className="archived-card-actions">
-                      <button
-                        className="secondary-button"
-                        disabled={!canEditProject || restoreCardMutation.isPending}
-                        onClick={() => void restoreCardMutation.mutateAsync(card.id)}
-                        type="button"
-                      >
-                        {restoreCardMutation.isPending ? "Restaurando..." : "Restaurar"}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="task-empty">
-                Nenhum card arquivado neste projeto no momento.
-              </div>
-            )
-          ) : null}
-
-          {!canEditProject ? (
-            <p className="field-helper">
-              Seu perfil neste projeto e somente leitura. Os cards arquivados seguem
-              visiveis, mas sem restauracao.
-            </p>
-          ) : null}
-        </div>
-      </Modal>
-
-      <Modal
-        description="O card pode ser criado com titulo, responsavel e prioridade. O prazo agora e opcional."
-        footer={
-          <>
-            <button
-              className="secondary-button"
-              onClick={() => setIsCreateModalOpen(false)}
-              type="button"
-            >
-              Cancelar
-            </button>
-            <button
-              className="primary-button"
-              disabled={createCardMutation.isPending}
-              form="create-card-form"
-              type="submit"
-            >
-              {createCardMutation.isPending ? "Salvando..." : "Criar card"}
-            </button>
-          </>
-        }
+      <CreateCardModal
+        columns={columns}
+        errorMessage={createError}
+        form={createCardForm}
+        isSaving={createCardMutation.isPending}
+        memberOptions={memberOptions}
+        onChangeForm={setCreateCardForm}
         onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateCard}
         open={isCreateModalOpen}
-        title="Novo card"
-      >
-        <form
-          className="form-grid"
-          id="create-card-form"
-          onSubmit={handleCreateCard}
-        >
-          <div className="field-group">
-            <label className="field-label" htmlFor="create-card-title">
-              Titulo
-            </label>
-            <input
-              className="field-input"
-              id="create-card-title"
-              minLength={2}
-              onChange={(event) =>
-                setCreateCardForm((currentForm) => ({
-                  ...currentForm,
-                  title: event.target.value,
-                }))
-              }
-              required
-              type="text"
-              value={createCardForm.title}
-            />
-          </div>
+        priorityOptions={priorityOptions}
+      />
 
-          <div className="form-row form-row-3">
-            <div className="field-group">
-              <label className="field-label" htmlFor="create-card-column">
-                Coluna
-              </label>
-              <select
-                className="field-input"
-                id="create-card-column"
-                onChange={(event) =>
-                  setCreateCardForm((currentForm) => ({
-                    ...currentForm,
-                    columnId: event.target.value,
-                  }))
-                }
-                required
-                value={createCardForm.columnId}
-              >
-                <option value="">Selecione</option>
-                {columns.map((column) => (
-                  <option key={column.id} value={column.id}>
-                    {column.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field-group">
-              <label className="field-label" htmlFor="create-card-assignee">
-                Responsavel
-              </label>
-              <select
-                className="field-input"
-                id="create-card-assignee"
-                onChange={(event) =>
-                  setCreateCardForm((currentForm) => ({
-                    ...currentForm,
-                    assigneeId: event.target.value,
-                  }))
-                }
-                required
-                value={createCardForm.assigneeId}
-              >
-                <option value="">Selecione</option>
-                {memberOptions.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field-group">
-              <label className="field-label" htmlFor="create-card-priority">
-                Prioridade
-              </label>
-              <select
-                className="field-input"
-                id="create-card-priority"
-                onChange={(event) =>
-                  setCreateCardForm((currentForm) => ({
-                    ...currentForm,
-                    priority: event.target.value as CardPriority,
-                  }))
-                }
-                value={createCardForm.priority}
-              >
-                {priorityOptions.map((priority) => (
-                  <option key={priority} value={priority}>
-                    {formatPriority(priority)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="field-group">
-            <label className="field-label" htmlFor="create-card-due-date">
-              Prazo (opcional)
-            </label>
-            <input
-              className="field-input"
-              id="create-card-due-date"
-              onChange={(event) =>
-                setCreateCardForm((currentForm) => ({
-                  ...currentForm,
-                  dueDate: event.target.value,
-                }))
-              }
-              type="date"
-              value={createCardForm.dueDate}
-            />
-          </div>
-
-          {createError ? <p className="form-error">{createError}</p> : null}
-        </form>
-      </Modal>
-
-      <Modal
-        footer={
-          <>
-            <button
-              className="secondary-button"
-              onClick={() => setSelectedCardId(null)}
-              type="button"
-            >
-              Fechar
-            </button>
-            <button
-              className="secondary-button button-danger"
-              disabled={
-                archiveCardMutation.isPending ||
-                !cardQuery.data ||
-                !canEditProject
-              }
-              onClick={() => void archiveCardMutation.mutateAsync()}
-              type="button"
-            >
-              {archiveCardMutation.isPending ? "Arquivando..." : "Arquivar"}
-            </button>
-            <button
-              className="primary-button"
-              disabled={
-                saveCardMutation.isPending || !cardQuery.data || !canEditProject
-              }
-              form="edit-card-form"
-              type="submit"
-            >
-              {saveCardMutation.isPending ? "Salvando..." : "Salvar card"}
-            </button>
-          </>
+      <CardDetailModal
+        canEditProject={canEditProject}
+        card={cardQuery.data}
+        cardDescriptionErrorMessage={cardDescriptionErrorMessage}
+        cardDescriptions={cardDescriptions}
+        checklistErrorMessage={checklistErrorMessage}
+        checklistItems={checklistItems}
+        checklistReferences={checklistReferences}
+        currentCardColumnName={currentCardColumnName}
+        editError={editError}
+        form={editCardForm}
+        isArchivePending={archiveCardMutation.isPending}
+        isChecklistBusy={
+          createChecklistItemMutation.isPending ||
+          updateChecklistItemMutation.isPending ||
+          reorderChecklistItemMutation.isPending ||
+          deleteChecklistItemMutation.isPending
         }
+        isChecklistLoading={checklistQuery.isLoading}
+        isCommentsBusy={
+          createCardDescriptionMutation.isPending ||
+          updateCardDescriptionMutation.isPending ||
+          deleteCardDescriptionMutation.isPending
+        }
+        isCommentsLoading={commentsQuery.isLoading}
+        isLoading={cardQuery.isLoading}
+        isOpen={Boolean(selectedCardId)}
+        isSavePending={saveCardMutation.isPending}
+        loadErrorMessage={
+          cardQuery.isError
+            ? cardQuery.error instanceof Error
+              ? cardQuery.error.message
+              : "Tente novamente em instantes."
+            : null
+        }
+        memberOptions={memberOptions}
+        onArchive={() => void archiveCardMutation.mutateAsync()}
+        onChangeForm={setEditCardForm}
+        onChecklistCreate={(title) =>
+          createChecklistItemMutation.mutateAsync(title)
+        }
+        onChecklistDelete={handleChecklistDelete}
+        onChecklistMove={handleChecklistMove}
+        onChecklistRename={handleChecklistRename}
+        onChecklistToggle={handleChecklistToggle}
         onClose={() => setSelectedCardId(null)}
-        open={Boolean(selectedCardId)}
-        title={cardQuery.data?.title ?? "Detalhe do card"}
-      >
-        {cardQuery.isLoading ? (
-          <StatusState
-            tone="loading"
-            title="Carregando card"
-            copy="Estamos buscando os dados mais recentes deste card."
-          />
-        ) : null}
-
-        {cardQuery.isError ? (
-          <StatusState
-            tone="error"
-            title="Nao foi possivel carregar o card"
-            copy={
-              cardQuery.error instanceof Error
-                ? cardQuery.error.message
-                : "Tente novamente em instantes."
-            }
-          />
-        ) : null}
-
-        {cardQuery.data ? (
-          <div className="card-detail-stack">
-            <form
-              className="form-grid"
-              id="edit-card-form"
-              onSubmit={handleSaveCard}
-            >
-              <div className="badge-row">
-                <span className="badge badge-gray">
-                  Coluna atual: {currentCardColumnName ?? "Sem coluna"}
-                </span>
-                <span
-                  className={`badge ${getPriorityTone(cardQuery.data.priority)}`}
-                >
-                  {formatPriority(cardQuery.data.priority)}
-                </span>
-              </div>
-
-              <div className="field-group">
-                <label className="field-label" htmlFor="edit-card-title">
-                  Titulo
-                </label>
-                <input
-                  className="field-input"
-                  disabled={!canEditProject}
-                  id="edit-card-title"
-                  minLength={2}
-                  onChange={(event) =>
-                    setEditCardForm((currentForm) => ({
-                      ...currentForm,
-                      title: event.target.value,
-                    }))
-                  }
-                  required
-                  type="text"
-                  value={editCardForm.title}
-                />
-              </div>
-
-              <CardCommentsSection
-                checklistReferences={checklistReferences}
-                comments={cardDescriptions}
-                emptyStateCopy="Nenhuma descricao registrada ainda. Use esta area para contexto, andamento e observacoes do card."
-                errorMessage={cardDescriptionErrorMessage}
-                fieldLabel="Adicionar descricao"
-                inputId="card-description-history"
-                isBusy={
-                  createCardDescriptionMutation.isPending ||
-                  updateCardDescriptionMutation.isPending ||
-                  deleteCardDescriptionMutation.isPending
-                }
-                isLoading={commentsQuery.isLoading}
-                placeholder="Escreva uma descricao, observacao ou atualizacao..."
-                readOnly={!canEditProject}
-                readOnlyCopy="Seu perfil neste projeto e somente leitura. As descricoes seguem visiveis, mas sem novos registros."
-                submitLabel="Registrar"
-                title="Descricao"
-                onCreate={(content) =>
-                  createCardDescriptionMutation.mutateAsync(content)
-                }
-                onDelete={(commentId) =>
-                  deleteCardDescriptionMutation.mutateAsync(commentId)
-                }
-                onReferenceClick={handleChecklistReferenceClick}
-                onUpdate={(commentId, content) =>
-                  updateCardDescriptionMutation.mutateAsync({ commentId, content })
-                }
-              />
-
-              <div className="form-row form-row-3">
-                <div className="field-group">
-                  <label className="field-label" htmlFor="edit-card-assignee">
-                    Responsavel
-                  </label>
-                  <select
-                    className="field-input"
-                    disabled={!canEditProject}
-                    id="edit-card-assignee"
-                    onChange={(event) =>
-                      setEditCardForm((currentForm) => ({
-                        ...currentForm,
-                        assigneeId: event.target.value,
-                      }))
-                    }
-                    required
-                    value={editCardForm.assigneeId}
-                  >
-                    <option value="">Selecione</option>
-                    {memberOptions.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field-group">
-                  <label className="field-label" htmlFor="edit-card-priority">
-                    Prioridade
-                  </label>
-                  <select
-                    className="field-input"
-                    disabled={!canEditProject}
-                    id="edit-card-priority"
-                    onChange={(event) =>
-                      setEditCardForm((currentForm) => ({
-                        ...currentForm,
-                        priority: event.target.value as CardPriority,
-                      }))
-                    }
-                    value={editCardForm.priority}
-                  >
-                    {priorityOptions.map((priority) => (
-                      <option key={priority} value={priority}>
-                        {formatPriority(priority)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field-group">
-                  <label className="field-label" htmlFor="edit-card-due-date">
-                    Prazo (opcional)
-                  </label>
-                  <input
-                    className="field-input"
-                    disabled={!canEditProject}
-                    id="edit-card-due-date"
-                    onChange={(event) =>
-                      setEditCardForm((currentForm) => ({
-                        ...currentForm,
-                        dueDate: event.target.value,
-                      }))
-                    }
-                    type="date"
-                    value={editCardForm.dueDate}
-                  />
-                </div>
-              </div>
-
-              {editError ? <p className="form-error">{editError}</p> : null}
-            </form>
-
-              <CardChecklistSection
-                errorMessage={checklistErrorMessage}
-                isBusy={
-                  createChecklistItemMutation.isPending ||
-                  updateChecklistItemMutation.isPending ||
-                  reorderChecklistItemMutation.isPending ||
-                  deleteChecklistItemMutation.isPending
-                }
-                isLoading={checklistQuery.isLoading}
-                items={checklistItems}
-                readOnly={!canEditProject}
-                onCreate={(title) =>
-                  createChecklistItemMutation.mutateAsync(title)
-                }
-                onDelete={handleChecklistDelete}
-                onMove={handleChecklistMove}
-                onRename={handleChecklistRename}
-                onToggle={handleChecklistToggle}
-              />
-          </div>
-        ) : null}
-      </Modal>
+        onCommentCreate={(content) =>
+          createCardDescriptionMutation.mutateAsync(content)
+        }
+        onCommentDelete={(commentId) =>
+          deleteCardDescriptionMutation.mutateAsync(commentId)
+        }
+        onCommentReferenceClick={handleChecklistReferenceClick}
+        onCommentUpdate={(commentId, content) =>
+          updateCardDescriptionMutation.mutateAsync({ commentId, content })
+        }
+        onSubmit={handleSaveCard}
+        priorityOptions={priorityOptions}
+      />
     </AppShell>
   );
 }

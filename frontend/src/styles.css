@@ -701,6 +701,19 @@ textarea {
   gap: 10px;
 }
 
+.board-column-title-form {
+  flex: 1;
+}
+
+.board-column-title-input {
+  padding: 6px 10px;
+  font-size: 0.9rem;
+}
+
+.board-column-title-editable {
+  cursor: pointer;
+}
+
 .board-column-count {
   display: inline-flex;
   align-items: center;
