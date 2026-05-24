@@ -3,14 +3,7 @@ import type { FormEvent } from "react";
 import { formatPriority } from "../../app/formatters";
 import { Modal } from "../../components/modal";
 import type { ApiUser, BoardColumn, CardPriority } from "../../types/api";
-
-type CreateCardFormState = {
-  assigneeId: string;
-  columnId: string;
-  dueDate: string;
-  priority: CardPriority;
-  title: string;
-};
+import type { CreateCardFormState } from "./board-form-state";
 
 type CreateCardModalProps = {
   columns: BoardColumn[];
@@ -178,4 +171,3 @@ export function CreateCardModal({
     </Modal>
   );
 }
-

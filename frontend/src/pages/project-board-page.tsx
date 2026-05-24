@@ -2,7 +2,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  type DragEvent,
   type FormEvent,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,57 +14,24 @@ import { StatusState } from "../components/status-state";
 import { ArchivedCardsModal } from "../features/board/archived-cards-modal";
 import { BoardColumn as BoardColumnView } from "../features/board/board-column";
 import {
+  initialCreateCardForm,
+  initialEditCardForm,
+  priorityOptions,
+  SHOW_COLUMN_MANAGEMENT,
+  type CreateCardFormState,
+  type EditCardFormState,
+} from "../features/board/board-form-state";
+import {
   isCompletedColumnTitle,
   sortColumnCards,
 } from "../features/board/board-utils";
 import { CardDetailModal } from "../features/board/card-detail-modal";
 import { CreateCardModal } from "../features/board/create-card-modal";
 import { NewColumnModal } from "../features/board/new-column-modal";
+import { useBoardCardDrag } from "../features/board/use-board-card-drag";
 import { useBoardColumnScroll } from "../features/board/use-board-column-scroll";
 import { ApiError, api } from "../services/api";
 import type { BoardCard, BoardColumn, CardPriority, ChecklistItem } from "../types/api";
-
-type CreateCardFormState = {
-  assigneeId: string;
-  columnId: string;
-  dueDate: string;
-  priority: CardPriority;
-  title: string;
-};
-
-type EditCardFormState = {
-  assigneeId: string;
-  dueDate: string;
-  priority: CardPriority;
-  title: string;
-};
-
-const initialCreateCardForm: CreateCardFormState = {
-  assigneeId: "",
-  columnId: "",
-  dueDate: "",
-  priority: "MEDIUM",
-  title: "",
-};
-
-const initialEditCardForm: EditCardFormState = {
-  assigneeId: "",
-  dueDate: "",
-  priority: "MEDIUM",
-  title: "",
-};
-
-const priorityOptions: CardPriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
-
-// Feature flag: column management UI (reorder arrows + add new column).
-// Hidden for the current MVP; toggle to re-enable in the future.
-const SHOW_COLUMN_MANAGEMENT = false;
-
-type DragCardState = {
-  cardId: string;
-  sourceColumnId: string;
-  sourcePosition: number;
-};
 
 export function ProjectBoardPage() {
   const queryClient = useQueryClient();
@@ -84,11 +50,6 @@ export function ProjectBoardPage() {
   const [checklistError, setChecklistError] = useState<string | null>(null);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [boardActionError, setBoardActionError] = useState<string | null>(null);
-  const [dragCard, setDragCard] = useState<DragCardState | null>(null);
-  const [dropTarget, setDropTarget] = useState<{
-    columnId: string;
-    position: number;
-  } | null>(null);
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState('');
   const [newColumnTitle, setNewColumnTitle] = useState('');
@@ -340,8 +301,6 @@ export function ProjectBoardPage() {
         queryClient.invalidateQueries({ queryKey: ["card", variables.cardId] }),
       ]);
       setBoardActionError(null);
-      setDragCard(null);
-      setDropTarget(null);
     },
     onError: (error) => {
       setBoardActionError(
@@ -349,9 +308,27 @@ export function ProjectBoardPage() {
           ? error.message
           : "Nao foi possivel mover o card no quadro.",
       );
-      setDragCard(null);
-      setDropTarget(null);
     },
+  });
+
+  const {
+    dragCardId,
+    getColumnBodyClassName,
+    getDropZoneClassName,
+    handleColumnDragOver,
+    handleColumnDrop,
+    handleDragEnd,
+    handleDragStart,
+    handleDrop,
+    handleDropTargetDragOver,
+    isDraggingCard,
+  } = useBoardCardDrag({
+    canEditProject,
+    getColumnScrollClassNames,
+    isMovePending: dragMoveCardMutation.isPending,
+    onMoveCard: (payload) => dragMoveCardMutation.mutateAsync(payload),
+    onStartDrag: () => setBoardActionError(null),
+    showColumnScrollLimit,
   });
 
   const restoreCardMutation = useMutation({
@@ -570,7 +547,7 @@ export function ProjectBoardPage() {
   }
 
   function openCardDetails(cardId: string) {
-    if (dragCard) {
+    if (isDraggingCard) {
       return;
     }
 
@@ -667,162 +644,6 @@ export function ProjectBoardPage() {
     window.setTimeout(() => {
       checklistItem.classList.remove("checklist-item-highlight");
     }, 1200);
-  }
-
-  function handleDragStart(
-    cardId: string,
-    sourceColumnId: string,
-    sourcePosition: number,
-  ) {
-    if (!canEditProject) {
-      return;
-    }
-
-    setBoardActionError(null);
-    setDragCard({
-      cardId,
-      sourceColumnId,
-      sourcePosition,
-    });
-    setDropTarget({
-      columnId: sourceColumnId,
-      position: sourcePosition,
-    });
-  }
-
-  function handleDragEnd() {
-    setDragCard(null);
-    setDropTarget(null);
-  }
-
-  function handleDropTargetDragOver(
-    event: DragEvent<HTMLElement>,
-    columnId: string,
-    position: number,
-  ) {
-    if (!dragCard || !canEditProject || dragMoveCardMutation.isPending) {
-      return;
-    }
-
-    event.preventDefault();
-
-    if (dropTarget?.columnId !== columnId || dropTarget.position !== position) {
-      setDropTarget({ columnId, position });
-    }
-  }
-
-  function getDropPositionFromPointer(
-    event: DragEvent<HTMLElement>,
-    column: BoardColumn,
-  ) {
-    const currentTarget = event.currentTarget;
-    const visibleCards = column.cards.filter((card) => card.id !== dragCard?.cardId);
-    const cardElements = Array.from(
-      currentTarget.querySelectorAll<HTMLElement>("[data-board-card-id]"),
-    ).filter((element) => element.dataset.boardCardId !== dragCard?.cardId);
-
-    if (visibleCards.length === 0 || cardElements.length === 0) {
-      return 0;
-    }
-
-    const targetIndex = cardElements.findIndex((element) => {
-      const bounds = element.getBoundingClientRect();
-      return event.clientY < bounds.top + bounds.height / 2;
-    });
-
-    return targetIndex === -1 ? visibleCards.length : targetIndex;
-  }
-
-  function handleColumnDragOver(event: DragEvent<HTMLDivElement>, column: BoardColumn) {
-    if (!dragCard || !canEditProject || dragMoveCardMutation.isPending) {
-      return;
-    }
-
-    event.preventDefault();
-
-    const element = event.currentTarget;
-    const hasScrollableContent = element.scrollHeight > element.clientHeight + 1;
-    const isAtBottom =
-      element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
-    const isNearBottom =
-      event.clientY >= element.getBoundingClientRect().bottom - 28;
-
-    if (hasScrollableContent && isAtBottom && isNearBottom) {
-      showColumnScrollLimit(column.id, "bottom");
-    }
-
-    const nextPosition = getDropPositionFromPointer(event, column);
-    if (
-      dropTarget?.columnId !== column.id ||
-      dropTarget.position !== nextPosition
-    ) {
-      setDropTarget({ columnId: column.id, position: nextPosition });
-    }
-  }
-
-  async function handleDrop(
-    event: DragEvent<HTMLElement>,
-    columnId: string,
-    position: number,
-  ) {
-    event.preventDefault();
-
-    if (!dragCard || dragMoveCardMutation.isPending) {
-      return;
-    }
-
-    if (
-      dragCard.sourceColumnId === columnId &&
-      dragCard.sourcePosition === position
-    ) {
-      setDragCard(null);
-      setDropTarget(null);
-      return;
-    }
-
-    await dragMoveCardMutation.mutateAsync({
-      cardId: dragCard.cardId,
-      targetColumnId: columnId,
-      targetPosition: position,
-    });
-  }
-
-  async function handleColumnDrop(
-    event: DragEvent<HTMLDivElement>,
-    column: BoardColumn,
-  ) {
-    if (!dragCard || dragMoveCardMutation.isPending) {
-      return;
-    }
-
-    const nextPosition = getDropPositionFromPointer(event, column);
-    await handleDrop(event, column.id, nextPosition);
-  }
-
-  function getDropZoneClassName(columnId: string, position: number) {
-    const classNames = ["board-drop-zone"];
-
-    if (position === 0) {
-      classNames.push("board-drop-zone-top");
-    }
-
-    if (dropTarget?.columnId === columnId && dropTarget.position === position) {
-      classNames.push("board-drop-zone-active");
-    }
-
-    return classNames.join(" ");
-  }
-
-  function getColumnBodyClassName(columnId: string) {
-    const classNames = ["board-column-body"];
-
-    if (dropTarget?.columnId === columnId) {
-      classNames.push("board-column-body-active");
-    }
-
-    classNames.push(...getColumnScrollClassNames(columnId));
-
-    return classNames.join(" ");
   }
 
   function handleStartEditingColumn(column: BoardColumn) {
@@ -956,7 +777,7 @@ export function ProjectBoardPage() {
                 canEditProject={canEditProject}
                 column={column}
                 columnCount={columns.length}
-                dragCardId={dragCard?.cardId}
+                dragCardId={dragCardId}
                 editingColumnId={editingColumnId}
                 editingColumnTitle={editingColumnTitle}
                 getColumnBodyClassName={getColumnBodyClassName}

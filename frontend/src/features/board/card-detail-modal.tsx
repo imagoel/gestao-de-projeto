@@ -12,13 +12,7 @@ import type {
   CardPriority,
   ChecklistItem,
 } from "../../types/api";
-
-type EditCardFormState = {
-  assigneeId: string;
-  dueDate: string;
-  priority: CardPriority;
-  title: string;
-};
+import type { EditCardFormState } from "./board-form-state";
 
 type ChecklistReference = {
   done: boolean;
@@ -292,4 +286,3 @@ export function CardDetailModal({
     </Modal>
   );
 }
-
