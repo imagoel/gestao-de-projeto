@@ -23,9 +23,18 @@ export function ProjectCard({
   onDragStart,
   onOpenBoard,
 }: ProjectCardProps) {
+  const hasDescription = Boolean(project.description?.trim());
+  const classNames = [
+    'project-card',
+    canMove ? 'project-card-draggable' : '',
+    hasDescription ? 'project-card-with-description' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <article
-      className={canMove ? 'project-card project-card-draggable' : 'project-card'}
+      className={classNames}
       draggable={canMove}
       role="listitem"
       onDragStart={(event) => {
@@ -53,7 +62,7 @@ export function ProjectCard({
             </span>
           </div>
           <h2 className="project-card-title">{project.name}</h2>
-          {project.description ? (
+          {hasDescription ? (
             <p className="project-card-copy">{project.description}</p>
           ) : null}
         </div>
