@@ -1,10 +1,9 @@
 import {
   useEffect,
-  useMemo,
   useState,
   type FormEvent,
 } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
 import { useAuth } from "../app/auth-provider";
@@ -21,15 +20,13 @@ import {
   type CreateCardFormState,
   type EditCardFormState,
 } from "../features/board/board-form-state";
-import {
-  isCompletedColumnTitle,
-  sortColumnCards,
-} from "../features/board/board-utils";
+import { isCompletedColumnTitle } from "../features/board/board-utils";
 import { CardDetailModal } from "../features/board/card-detail-modal";
 import { CreateCardModal } from "../features/board/create-card-modal";
 import { NewColumnModal } from "../features/board/new-column-modal";
 import { useBoardCardDrag } from "../features/board/use-board-card-drag";
 import { useBoardColumnScroll } from "../features/board/use-board-column-scroll";
+import { useProjectBoardData } from "../features/board/use-project-board-data";
 import { ApiError, api } from "../services/api";
 import type { BoardCard, BoardColumn, CardPriority, ChecklistItem } from "../types/api";
 
@@ -56,50 +53,24 @@ export function ProjectBoardPage() {
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [columnError, setColumnError] = useState<string | null>(null);
 
-  const projectQuery = useQuery({
-    queryKey: ["project", projectId],
-    queryFn: () => api.getProject(token!, projectId),
-    enabled: Boolean(token && projectId),
+  const {
+    archivedCardsQuery,
+    boardQuery,
+    canEditProject,
+    cardQuery,
+    checklistQuery,
+    columns,
+    commentsQuery,
+    isReadOnlyProject,
+    memberOptions,
+    projectQuery,
+  } = useProjectBoardData({
+    isArchivedModalOpen,
+    projectId,
+    selectedCardId,
+    token,
+    user,
   });
-
-  const boardQuery = useQuery({
-    queryKey: ["board", projectId],
-    queryFn: () => api.getProjectBoard(token!, projectId),
-    enabled: Boolean(token && projectId),
-  });
-
-  const archivedCardsQuery = useQuery({
-    queryKey: ["archived-cards", projectId],
-    queryFn: () => api.getArchivedCards(token!, projectId),
-    enabled: Boolean(token && projectId && isArchivedModalOpen),
-  });
-
-  const cardQuery = useQuery({
-    queryKey: ["card", selectedCardId],
-    queryFn: () => api.getCard(token!, selectedCardId!),
-    enabled: Boolean(token && selectedCardId),
-  });
-
-  const checklistQuery = useQuery({
-    queryKey: ["checklist", selectedCardId],
-    queryFn: () => api.getChecklistItems(token!, selectedCardId!),
-    enabled: Boolean(token && selectedCardId),
-  });
-
-  const commentsQuery = useQuery({
-    queryKey: ["card-comments", selectedCardId],
-    queryFn: () => api.getCardComments(token!, selectedCardId!),
-    enabled: Boolean(token && selectedCardId),
-  });
-
-  const memberOptions =
-    projectQuery.data?.members
-      .filter((member) => member.role !== "VIEWER")
-      .map((member) => member.user) ?? [];
-  const columns = useMemo(() => {
-    const rawColumns = boardQuery.data?.columns ?? [];
-    return sortColumnCards(rawColumns);
-  }, [boardQuery.data?.columns]);
   const {
     getColumnScrollClassNames,
     handleColumnScroll,
@@ -107,17 +78,6 @@ export function ProjectBoardPage() {
     registerColumnBody,
     showColumnScrollLimit,
   } = useBoardColumnScroll(columns);
-  const currentProjectMember = projectQuery.data?.members.find(
-    (member) => member.user.id === user?.id,
-  );
-  const canEditProject = Boolean(
-    user &&
-    (user.role === "ADMIN" ||
-      projectQuery.data?.ownerId === user.id ||
-      currentProjectMember?.role === "MANAGER" ||
-      currentProjectMember?.role === "MEMBER"),
-  );
-  const isReadOnlyProject = Boolean(projectQuery.data && !canEditProject);
 
   useEffect(() => {
     if (!cardQuery.data) {
