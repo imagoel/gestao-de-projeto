@@ -1,0 +1,194 @@
+.login-page {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  min-height: 100vh;
+  padding: 24px 24px 28px;
+}
+
+.login-footer {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  padding-top: 20px;
+  background: transparent;
+}
+
+.login-stack {
+  width: min(100%, 460px);
+  display: grid;
+  gap: 28px;
+  justify-items: center;
+  align-self: center;
+}
+
+.login-card {
+  width: 100%;
+  display: grid;
+  gap: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.login-logo {
+  display: block;
+  width: min(100%, 292px);
+  height: auto;
+  object-fit: contain;
+}
+
+.login-title {
+  margin: 0;
+  font-size: 1.95rem;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.login-card .primary-button {
+  min-width: 148px;
+  justify-self: center;
+  margin-top: 6px;
+  background: #9e243d;
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.login-card .primary-button:hover {
+  transform: translateY(-2px);
+  background: #7a1c38;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.login-card .field-group {
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+.login-card .field-label {
+  text-align: center;
+  font-weight: 600;
+  color: #4d4942;
+  font-size: 0.95rem;
+}
+
+.login-card .field-input {
+  border: none;
+  min-height: 66px;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  text-align: center;
+  font-size: 1rem;
+}
+
+.login-card .field-input::placeholder {
+  color: #7a786f;
+}
+
+.login-card .field-input:focus {
+  box-shadow:
+    0 0 5px 0 rgba(51, 154, 128, 0.3),
+    0 10px 26px rgba(0, 0, 0, 0.14);
+  transform: translateY(-1px);
+}
+
+.login-card .form-error {
+  text-align: center;
+}
+
+.login-footer-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  width: 100%;
+}
+
+.login-footer-logo {
+  width: auto;
+  object-fit: contain;
+}
+
+.login-footer-logo-gti {
+  height: 74px;
+}
+
+.login-footer-logo-immanuel {
+  height: 152px;
+}
+
+.login-footer-divider {
+  width: 1px;
+  height: 138px;
+  background: #cfc8bb;
+}
+
+@media (max-width: 640px) {
+  .login-page {
+    padding: 20px 16px 24px;
+    padding-top: 32px;
+  }
+
+  .login-stack {
+    width: min(100%, 380px);
+    gap: 24px;
+  }
+
+  .login-card {
+    gap: 16px;
+  }
+
+  .login-logo {
+    width: min(100%, 258px);
+  }
+
+  .login-footer {
+    padding-top: 18px;
+  }
+
+  .login-footer-logos {
+    gap: 18px;
+  }
+
+  .login-footer-logo-gti {
+    height: 60px;
+  }
+
+  .login-footer-logo-immanuel {
+    height: 116px;
+  }
+
+  .login-footer-divider {
+    height: 108px;
+  }
+}
+
+@media (max-width: 420px) {
+  .login-stack {
+    width: min(100%, 320px);
+    gap: 22px;
+  }
+
+  .login-logo {
+    width: min(100%, 225px);
+  }
+
+  .login-footer-logos {
+    gap: 14px;
+  }
+
+  .login-footer-logo-gti {
+    height: 48px;
+  }
+
+  .login-footer-logo-immanuel {
+    height: 94px;
+  }
+
+  .login-footer-divider {
+    height: 92px;
+  }
+}

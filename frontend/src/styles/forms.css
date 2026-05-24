@@ -1,0 +1,88 @@
+.field-group {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.field-label {
+  font-size: 0.9rem;
+  color: #514f48;
+}
+
+.field-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #c6c2b7;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #1f1d1a;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: rgba(51, 154, 128, 0.45);
+  box-shadow: 0 0 5px 0 rgba(51, 154, 128, 0.3);
+}
+
+.field-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.field-helper {
+  margin: 0;
+  color: #6f6b63;
+  font-size: 0.88rem;
+}
+
+.form-error {
+  margin: 0;
+  color: #8c2f25;
+  font-size: 0.9rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.form-row-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.checkbox-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e1ddd2;
+  border-radius: 14px;
+  background: #fbfaf7;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #44423d;
+}
+
+.checkbox-item small {
+  color: #6f6b63;
+}
+
+.inline-form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.inline-form-end {
+  justify-content: flex-end;
+}

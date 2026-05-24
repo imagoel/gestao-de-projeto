@@ -1,0 +1,105 @@
+.standalone-state {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.status-state {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #d4d1c7;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.status-state-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: #dcecff;
+}
+
+.status-state-loading .status-state-mark {
+  background: #e6f1fb;
+}
+
+.status-state-error .status-state-mark {
+  background: #fbe8e6;
+}
+
+.status-state-content {
+  display: grid;
+  gap: 8px;
+}
+
+.status-state-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.status-state-copy {
+  margin: 0;
+  color: #57544d;
+}
+
+.status-state-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(23, 23, 23, 0.4);
+  backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  width: min(100%, 760px);
+  max-height: calc(100vh - 48px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border: 1px solid #d4d1c7;
+  border-radius: 22px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.modal-header,
+.modal-footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #eceae3;
+}
+
+.modal-footer {
+  justify-content: flex-end;
+  align-items: center;
+  border-top: 1px solid #eceae3;
+  border-bottom: 0;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.modal-copy {
+  margin: 8px 0 0;
+  color: #64615a;
+}
+
+.modal-body {
+  padding: 24px;
+  overflow: auto;
+}
