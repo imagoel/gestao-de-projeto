@@ -4,44 +4,22 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
 import { AppShell } from '../components/app-shell';
-import { Modal } from '../components/modal';
 import { StatusState } from '../components/status-state';
+import { OrganizationModal } from '../features/users/organization-modal';
+import { UserDrawer } from '../features/users/user-drawer';
+import { UsersPagination } from '../features/users/users-pagination';
+import { UsersTable } from '../features/users/users-table';
+import { UsersToolbar } from '../features/users/users-toolbar';
+import {
+  initialNewSectorForm,
+  initialUserForm,
+  type RoleFilter,
+  type StatusFilter,
+  type UserFormState,
+} from '../features/users/users-types';
+import { normalize } from '../features/users/users-utils';
 import { ApiError, api } from '../services/api';
-import type { ApiUser, UserRole } from '../types/api';
-
-type UserFormState = {
-  name: string;
-  email: string;
-  password: string;
-  role: UserRole;
-  isActive: boolean;
-  avatarUrl: string;
-  sectorIds: string[];
-};
-
-type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE';
-type RoleFilter = 'ALL' | UserRole;
-
-const initialUserForm: UserFormState = {
-  name: '',
-  email: '',
-  password: '',
-  role: 'MEMBER',
-  isActive: true,
-  avatarUrl: '',
-  sectorIds: [],
-};
-
-function normalize(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
-
-function getMembershipLabel(membership: NonNullable<ApiUser['sectorMemberships']>[number]) {
-  return `${membership.sector.secretariat.name} > ${membership.sector.name}`;
-}
+import type { ApiUser } from '../types/api';
 
 export function UsersPage() {
   const navigate = useNavigate();
@@ -61,10 +39,7 @@ export function UsersPage() {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [newSecretariatName, setNewSecretariatName] = useState('');
-  const [newSectorForm, setNewSectorForm] = useState({
-    name: '',
-    secretariatId: '',
-  });
+  const [newSectorForm, setNewSectorForm] = useState(initialNewSectorForm);
 
   const usersQuery = useQuery({
     queryKey: ['users'],
@@ -247,6 +222,13 @@ export function UsersPage() {
     setFormError(null);
   }
 
+  function updateUserForm(updates: Partial<UserFormState>) {
+    setUserForm((currentForm) => ({
+      ...currentForm,
+      ...updates,
+    }));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -312,222 +294,35 @@ export function UsersPage() {
       {!usersQuery.isLoading && !usersQuery.isError ? (
         (usersQuery.data ?? []).length > 0 ? (
           <section className="users-panel">
-            <div className="users-toolbar">
-              <div className="field-group users-search">
-                <label className="field-label" htmlFor="users-search">
-                  Buscar
-                </label>
-                <input
-                  className="field-input"
-                  id="users-search"
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Nome ou e-mail"
-                  type="search"
-                  value={search}
-                />
-              </div>
+            <UsersToolbar
+              availableSectors={availableSectors}
+              onRoleFilterChange={setRoleFilter}
+              onSearchChange={setSearch}
+              onSecretariatFilterChange={(value) => {
+                setSecretariatFilter(value);
+                setSectorFilter('ALL');
+              }}
+              onSectorFilterChange={setSectorFilter}
+              onStatusFilterChange={setStatusFilter}
+              roleFilter={roleFilter}
+              search={search}
+              secretariatFilter={secretariatFilter}
+              secretariats={secretariats}
+              sectorFilter={sectorFilter}
+              statusFilter={statusFilter}
+            />
 
-              <div className="field-group">
-                <label className="field-label" htmlFor="users-role-filter">
-                  Perfil
-                </label>
-                <select
-                  className="field-input"
-                  id="users-role-filter"
-                  onChange={(event) => setRoleFilter(event.target.value as RoleFilter)}
-                  value={roleFilter}
-                >
-                  <option value="ALL">Todos</option>
-                  <option value="ADMIN">Admin</option>
-                  <option value="MEMBER">Membro</option>
-                </select>
-              </div>
+            <UsersTable onEditUser={openEditDrawer} users={visibleUsers} />
 
-              <div className="field-group">
-                <label className="field-label" htmlFor="users-status-filter">
-                  Status
-                </label>
-                <select
-                  className="field-input"
-                  id="users-status-filter"
-                  onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                  value={statusFilter}
-                >
-                  <option value="ALL">Todos</option>
-                  <option value="ACTIVE">Ativos</option>
-                  <option value="INACTIVE">Inativos</option>
-                </select>
-              </div>
-
-              <div className="field-group">
-                <label className="field-label" htmlFor="users-secretariat-filter">
-                  Secretaria
-                </label>
-                <select
-                  className="field-input"
-                  id="users-secretariat-filter"
-                  onChange={(event) => {
-                    setSecretariatFilter(event.target.value);
-                    setSectorFilter('ALL');
-                  }}
-                  value={secretariatFilter}
-                >
-                  <option value="ALL">Todas</option>
-                  {secretariats.map((secretariat) => (
-                    <option key={secretariat.id} value={secretariat.id}>
-                      {secretariat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field-group">
-                <label className="field-label" htmlFor="users-sector-filter">
-                  Setor
-                </label>
-                <select
-                  className="field-input"
-                  id="users-sector-filter"
-                  onChange={(event) => setSectorFilter(event.target.value)}
-                  value={sectorFilter}
-                >
-                  <option value="ALL">Todos</option>
-                  {availableSectors
-                    .filter(
-                      (sector) =>
-                        secretariatFilter === 'ALL' ||
-                        sector.secretariat.id === secretariatFilter,
-                    )
-                    .map((sector) => (
-                      <option key={sector.id} value={sector.id}>
-                        {`${sector.secretariat.name} > ${sector.name}`}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="users-table-wrap">
-              <table className="users-table">
-                <thead>
-                  <tr>
-                    <th>Nome</th>
-                    <th>E-mail</th>
-                    <th>Perfil</th>
-                    <th>Status</th>
-                    <th>Vinculos</th>
-                    <th aria-label="Acoes" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleUsers.length > 0 ? (
-                    visibleUsers.map((listedUser) => {
-                      const memberships = listedUser.sectorMemberships ?? [];
-                      const visibleMemberships = memberships.slice(0, 3);
-                      const hiddenCount = memberships.length - visibleMemberships.length;
-
-                      return (
-                        <tr
-                          className={!listedUser.isActive ? 'users-table-row-muted' : undefined}
-                          key={listedUser.email}
-                        >
-                          <td>{listedUser.name}</td>
-                          <td>{listedUser.email}</td>
-                          <td>
-                            <span
-                              className={`badge ${
-                                listedUser.role === 'ADMIN' ? 'badge-blue' : 'badge-gray'
-                              }`}
-                            >
-                              {listedUser.role === 'ADMIN' ? 'Admin' : 'Membro'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={`badge ${listedUser.isActive ? 'badge-green' : 'badge-red'}`}>
-                              {listedUser.isActive ? 'Ativo' : 'Inativo'}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="badge-row">
-                              {visibleMemberships.length > 0 ? (
-                                <>
-                                  {visibleMemberships.map((membership) => (
-                                    <span className="badge badge-gray" key={membership.id}>
-                                      {getMembershipLabel(membership)}
-                                    </span>
-                                  ))}
-                                  {hiddenCount > 0 ? (
-                                    <span className="badge badge-gray">+{hiddenCount}</span>
-                                  ) : null}
-                                </>
-                              ) : (
-                                <span className="muted-text">Sem vinculo</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="users-table-actions">
-                            <button
-                              className="secondary-button"
-                              onClick={() => openEditDrawer(listedUser)}
-                              type="button"
-                            >
-                              Editar acessos
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={6}>
-                        <span className="muted-text">
-                          Nenhum usuario encontrado com os filtros atuais.
-                        </span>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="pagination-row">
-              <span className="muted-text">
-                {filteredUsers.length} usuario{filteredUsers.length === 1 ? '' : 's'}
-              </span>
-              <div className="pagination-actions">
-                <label className="pagination-size">
-                  <span>Por pagina</span>
-                  <select
-                    className="field-input"
-                    onChange={(event) => setPageSize(Number(event.target.value))}
-                    value={pageSize}
-                  >
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
-                </label>
-                <button
-                  className="secondary-button"
-                  disabled={safePage <= 1}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  type="button"
-                >
-                  Anterior
-                </button>
-                <span className="muted-text">
-                  {safePage} / {pageCount}
-                </span>
-                <button
-                  className="secondary-button"
-                  disabled={safePage >= pageCount}
-                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-                  type="button"
-                >
-                  Proxima
-                </button>
-              </div>
-            </div>
+            <UsersPagination
+              currentPage={safePage}
+              onNextPage={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+              onPageSizeChange={setPageSize}
+              onPreviousPage={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              totalUsers={filteredUsers.length}
+            />
           </section>
         ) : (
           <StatusState
@@ -542,354 +337,34 @@ export function UsersPage() {
         )
       ) : null}
 
-      {isDrawerOpen ? (
-        <div
-          className="drawer-overlay"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              closeDrawer();
-            }
-          }}
-        >
-          <aside
-            aria-modal="true"
-            className="drawer-panel"
-            role="dialog"
-          >
-            <header className="drawer-header">
-              <div>
-                <h2 className="drawer-title">
-                  {editingUser ? 'Editar acessos' : 'Novo usuario'}
-                </h2>
-                <p className="drawer-copy">
-                  Dados principais, status e vinculos por secretaria/setor.
-                </p>
-              </div>
-              <button className="icon-button" onClick={closeDrawer} type="button">
-                x
-              </button>
-            </header>
+      <UserDrawer
+        editingUser={editingUser}
+        error={formError}
+        form={userForm}
+        isOpen={isDrawerOpen}
+        isSaving={saveUserMutation.isPending}
+        isSecretariatsLoading={secretariatsQuery.isLoading}
+        onChange={updateUserForm}
+        onClose={closeDrawer}
+        onSubmit={handleSubmit}
+        onToggleSector={toggleSector}
+        secretariats={secretariats}
+      />
 
-            <form className="drawer-body form-grid" id="user-form" onSubmit={handleSubmit}>
-              <section className="drawer-section">
-                <h3>Identificacao</h3>
-                <div className="form-row">
-                  <div className="field-group">
-                    <label className="field-label" htmlFor="user-name">
-                      Nome
-                    </label>
-                    <input
-                      className="field-input"
-                      id="user-name"
-                      minLength={2}
-                      onChange={(event) =>
-                        setUserForm((currentForm) => ({
-                          ...currentForm,
-                          name: event.target.value,
-                        }))
-                      }
-                      required
-                      type="text"
-                      value={userForm.name}
-                    />
-                  </div>
-
-                  <div className="field-group">
-                    <label className="field-label" htmlFor="user-email">
-                      E-mail
-                    </label>
-                    <input
-                      className="field-input"
-                      id="user-email"
-                      onChange={(event) =>
-                        setUserForm((currentForm) => ({
-                          ...currentForm,
-                          email: event.target.value,
-                        }))
-                      }
-                      required
-                      type="email"
-                      value={userForm.email}
-                    />
-                  </div>
-                </div>
-
-                <div className="field-group">
-                  <label className="field-label" htmlFor="user-avatar">
-                    Avatar URL
-                  </label>
-                  <input
-                    className="field-input"
-                    id="user-avatar"
-                    onChange={(event) =>
-                      setUserForm((currentForm) => ({
-                        ...currentForm,
-                        avatarUrl: event.target.value,
-                      }))
-                    }
-                    placeholder="Opcional"
-                    type="url"
-                    value={userForm.avatarUrl}
-                  />
-                </div>
-              </section>
-
-              <section className="drawer-section">
-                <h3>Acesso</h3>
-                <div className="form-row">
-                  <div className="field-group">
-                    <label className="field-label" htmlFor="user-role">
-                      Perfil
-                    </label>
-                    <select
-                      className="field-input"
-                      id="user-role"
-                      onChange={(event) =>
-                        setUserForm((currentForm) => ({
-                          ...currentForm,
-                          role: event.target.value as UserRole,
-                        }))
-                      }
-                      value={userForm.role}
-                    >
-                      <option value="MEMBER">Membro</option>
-                      <option value="ADMIN">Admin</option>
-                    </select>
-                  </div>
-
-                  <div className="field-group">
-                    <label className="field-label" htmlFor="user-status">
-                      Status
-                    </label>
-                    <select
-                      className="field-input"
-                      id="user-status"
-                      onChange={(event) =>
-                        setUserForm((currentForm) => ({
-                          ...currentForm,
-                          isActive: event.target.value === 'ACTIVE',
-                        }))
-                      }
-                      value={userForm.isActive ? 'ACTIVE' : 'INACTIVE'}
-                    >
-                      <option value="ACTIVE">Ativo</option>
-                      <option value="INACTIVE">Inativo</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="field-group">
-                  <label className="field-label" htmlFor="user-password">
-                    {editingUser ? 'Nova senha' : 'Senha'}
-                  </label>
-                  <input
-                    className="field-input"
-                    id="user-password"
-                    minLength={editingUser ? undefined : 8}
-                    onChange={(event) =>
-                      setUserForm((currentForm) => ({
-                        ...currentForm,
-                        password: event.target.value,
-                      }))
-                    }
-                    placeholder={editingUser ? 'Deixe em branco para manter a atual' : 'Minimo de 8 caracteres'}
-                    required={!editingUser}
-                    type="password"
-                    value={userForm.password}
-                  />
-                </div>
-              </section>
-
-              <section className="drawer-section">
-                <h3>Vinculos</h3>
-                <p className="field-helper">
-                  Estes setores definem quais pastas o membro consegue visualizar.
-                </p>
-                <div className="sector-picker">
-                  {secretariatsQuery.isLoading ? (
-                    <p className="field-helper">Carregando setores...</p>
-                  ) : null}
-                  {secretariats.length > 0 ? (
-                    secretariats.map((secretariat) => (
-                      <div className="sector-picker-group" key={secretariat.id}>
-                        <p>{secretariat.name}</p>
-                        <div className="checkbox-list checkbox-list-compact">
-                          {secretariat.sectors.length > 0 ? (
-                            secretariat.sectors.map((sector) => (
-                              <label className="checkbox-item" key={sector.id}>
-                                <input
-                                  checked={userForm.sectorIds.includes(sector.id)}
-                                  onChange={() => toggleSector(sector.id)}
-                                  type="checkbox"
-                                />
-                                <span>{sector.name}</span>
-                              </label>
-                            ))
-                          ) : (
-                            <span className="muted-text">Sem setores cadastrados.</span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="field-helper">
-                      Nenhuma secretaria cadastrada ainda.
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              {formError ? <p className="form-error">{formError}</p> : null}
-            </form>
-
-            <footer className="drawer-footer">
-              <button className="secondary-button" onClick={closeDrawer} type="button">
-                Cancelar
-              </button>
-              <button
-                className="primary-button"
-                disabled={saveUserMutation.isPending}
-                form="user-form"
-                type="submit"
-              >
-                {saveUserMutation.isPending
-                  ? 'Salvando...'
-                  : editingUser
-                    ? 'Salvar acessos'
-                    : 'Criar usuario'}
-              </button>
-            </footer>
-          </aside>
-        </div>
-      ) : null}
-
-      <Modal
-        description="Cadastro rapido da arvore organizacional usada nas pastas e nos vinculos dos usuarios."
-        footer={
-          <button
-            className="secondary-button"
-            onClick={() => setIsOrganizationOpen(false)}
-            type="button"
-          >
-            Fechar
-          </button>
-        }
+      <OrganizationModal
+        error={organizationError}
+        isCreatingSecretariat={createSecretariatMutation.isPending}
+        isCreatingSector={createSectorMutation.isPending}
+        newSecretariatName={newSecretariatName}
+        newSectorForm={newSectorForm}
         onClose={() => setIsOrganizationOpen(false)}
+        onCreateSecretariat={() => void createSecretariatMutation.mutateAsync()}
+        onCreateSector={() => void createSectorMutation.mutateAsync()}
+        onSecretariatNameChange={setNewSecretariatName}
+        onSectorFormChange={setNewSectorForm}
         open={isOrganizationOpen}
-        title="Secretarias e setores"
-      >
-        <div className="organization-manager">
-          <form
-            className="inline-form organization-inline-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (newSecretariatName.trim()) {
-                void createSecretariatMutation.mutateAsync();
-              }
-            }}
-          >
-            <div className="field-group">
-              <label className="field-label" htmlFor="secretariat-name">
-                Nova secretaria
-              </label>
-              <input
-                className="field-input"
-                id="secretariat-name"
-                onChange={(event) => setNewSecretariatName(event.target.value)}
-                placeholder="Ex: SEMED"
-                value={newSecretariatName}
-              />
-            </div>
-            <button
-              className="secondary-button"
-              disabled={createSecretariatMutation.isPending || !newSecretariatName.trim()}
-              type="submit"
-            >
-              Adicionar
-            </button>
-          </form>
-
-          <form
-            className="inline-form organization-inline-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (newSectorForm.name.trim() && newSectorForm.secretariatId) {
-                void createSectorMutation.mutateAsync();
-              }
-            }}
-          >
-            <div className="field-group">
-              <label className="field-label" htmlFor="sector-secretariat">
-                Secretaria
-              </label>
-              <select
-                className="field-input"
-                id="sector-secretariat"
-                onChange={(event) =>
-                  setNewSectorForm((current) => ({
-                    ...current,
-                    secretariatId: event.target.value,
-                  }))
-                }
-                value={newSectorForm.secretariatId}
-              >
-                <option value="">Selecione</option>
-                {secretariats.map((secretariat) => (
-                  <option key={secretariat.id} value={secretariat.id}>
-                    {secretariat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field-group">
-              <label className="field-label" htmlFor="sector-name">
-                Novo setor
-              </label>
-              <input
-                className="field-input"
-                id="sector-name"
-                onChange={(event) =>
-                  setNewSectorForm((current) => ({ ...current, name: event.target.value }))
-                }
-                placeholder="Ex: ASCOM"
-                value={newSectorForm.name}
-              />
-            </div>
-            <button
-              className="secondary-button"
-              disabled={
-                createSectorMutation.isPending ||
-                !newSectorForm.name.trim() ||
-                !newSectorForm.secretariatId
-              }
-              type="submit"
-            >
-              Adicionar setor
-            </button>
-          </form>
-
-          {organizationError ? <p className="form-error">{organizationError}</p> : null}
-
-          <div className="organization-admin-list">
-            {secretariats.map((secretariat) => (
-              <section className="organization-admin-card" key={secretariat.id}>
-                <strong>{secretariat.name}</strong>
-                <div className="badge-row">
-                  {secretariat.sectors.length > 0 ? (
-                    secretariat.sectors.map((sector) => (
-                      <span className="badge badge-gray" key={sector.id}>
-                        {sector.name}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="muted-text">Sem setores</span>
-                  )}
-                </div>
-              </section>
-            ))}
-          </div>
-        </div>
-      </Modal>
+        secretariats={secretariats}
+      />
     </AppShell>
   );
 }
