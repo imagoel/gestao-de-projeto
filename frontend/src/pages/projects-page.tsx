@@ -1,57 +1,30 @@
 import {
-  useEffect,
   useMemo,
-  useRef,
   useState,
   type DragEvent,
   type FormEvent,
-  type UIEvent,
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
-import {
-  formatLongDate,
-  formatProjectStatus,
-  formatShortDate,
-  getProjectStatusTone,
-} from '../app/formatters';
 import { AppShell } from '../components/app-shell';
-import { Modal } from '../components/modal';
 import { StatusState } from '../components/status-state';
+import {
+  CreateFolderModal,
+  CreateProjectModal,
+  RenameFolderModal,
+} from '../features/projects/project-modals';
+import { ProjectFolderSection } from '../features/projects/project-folder-section';
+import {
+  initialFolderForm,
+  initialProjectForm,
+  type FolderFormState,
+  type ProjectFormState,
+} from '../features/projects/projects-types';
+import { useProjectRowScroll } from '../features/projects/use-project-row-scroll';
 import { ApiError, api } from '../services/api';
 import type { Project, ProjectFolder } from '../types/api';
-
-type ProjectFormState = {
-  name: string;
-  description: string;
-  deadline: string;
-  ownerId: string;
-  folderId: string;
-  memberIds: string[];
-};
-
-const initialProjectForm: ProjectFormState = {
-  name: '',
-  description: '',
-  deadline: '',
-  ownerId: '',
-  folderId: '',
-  memberIds: [],
-};
-
-type FolderFormState = {
-  name: string;
-  sectorId: string;
-  visibility: 'SECTOR' | 'SECRETARIAT';
-};
-
-const initialFolderForm: FolderFormState = {
-  name: '',
-  sectorId: '',
-  visibility: 'SECTOR',
-};
 
 export function ProjectsPage() {
   const navigate = useNavigate();
@@ -67,10 +40,6 @@ export function ProjectsPage() {
   const [openFolders, setOpenFolders] = useState<Set<string>>(() => new Set());
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
-  const [projectRowHints, setProjectRowHints] = useState<
-    Record<string, { left: boolean; right: boolean }>
-  >({});
-  const projectRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   function toggleFolder(key: string) {
     setOpenFolders((prev) => {
@@ -191,34 +160,15 @@ export function ProjectsPage() {
     }));
   }, [visibleFolders]);
 
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      projectRowRefs.current.forEach((element, folderId) => {
-        updateProjectRowHints(element, folderId);
-      });
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupedProjects, openFolders]);
-
-  useEffect(() => {
-    return () => {
-      projectRowRefs.current.clear();
-    };
-  }, []);
-
-  useEffect(() => {
-    function handleResize() {
-      projectRowRefs.current.forEach((element, folderId) => {
-        updateProjectRowHints(element, folderId);
-      });
-    }
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const projectRowRefreshSignal = useMemo(
+    () => ({ groupedProjects, openFolders }),
+    [groupedProjects, openFolders],
+  );
+  const {
+    getProjectRowShellClassName,
+    handleProjectRowScroll,
+    registerProjectRow,
+  } = useProjectRowScroll(projectRowRefreshSignal);
 
   const createProjectMutation = useMutation({
     mutationFn: () =>
@@ -305,65 +255,17 @@ export function ProjectsPage() {
     }));
   }
 
+  function updateProjectForm(updates: Partial<ProjectFormState>) {
+    setProjectForm((currentForm) => ({
+      ...currentForm,
+      ...updates,
+    }));
+  }
+
   async function handleCreateProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
     await createProjectMutation.mutateAsync();
-  }
-
-  function handleProjectRowScroll(event: UIEvent<HTMLDivElement>, folderId: string) {
-    updateProjectRowHints(event.currentTarget, folderId);
-  }
-
-  function registerProjectRow(folderId: string, element: HTMLDivElement | null) {
-    if (!element) {
-      projectRowRefs.current.delete(folderId);
-      return;
-    }
-
-    projectRowRefs.current.set(folderId, element);
-    window.requestAnimationFrame(() => updateProjectRowHints(element, folderId));
-  }
-
-  function updateProjectRowHints(element: HTMLDivElement, folderId: string) {
-    const hasScrollableContent = element.scrollWidth > element.clientWidth + 1;
-    const nextHints = {
-      left: hasScrollableContent && element.scrollLeft > 1,
-      right:
-        hasScrollableContent &&
-        element.scrollLeft + element.clientWidth < element.scrollWidth - 1,
-    };
-
-    setProjectRowHints((current) => {
-      const currentHints = current[folderId];
-
-      if (
-        currentHints?.left === nextHints.left &&
-        currentHints?.right === nextHints.right
-      ) {
-        return current;
-      }
-
-      return {
-        ...current,
-        [folderId]: nextHints,
-      };
-    });
-  }
-
-  function getProjectRowShellClassName(folderId: string) {
-    const classNames = ['project-row-shell'];
-    const hints = projectRowHints[folderId];
-
-    if (hints?.left) {
-      classNames.push('project-row-has-more-left');
-    }
-
-    if (hints?.right) {
-      classNames.push('project-row-has-more-right');
-    }
-
-    return classNames.join(' ');
   }
 
   function canManageFolder(folder: ProjectFolder) {
@@ -384,64 +286,36 @@ export function ProjectsPage() {
     );
   }
 
-  function renderProjectCard(project: Project) {
-    const projectCanMove = canMoveProject(project);
+  function handleProjectDragStart(projectId: string, event: DragEvent<HTMLElement>) {
+    setDraggedProjectId(projectId);
+    event.dataTransfer.setData('text/plain', projectId);
+    event.dataTransfer.effectAllowed = 'move';
+  }
 
-    return (
-      <article
-        className={projectCanMove ? 'project-card project-card-draggable' : 'project-card'}
-        draggable={projectCanMove}
-        key={project.id}
-        role="listitem"
-        onDragStart={(e) => {
-          if (!projectCanMove) {
-            e.preventDefault();
-            return;
-          }
+  function handleProjectDragEnd() {
+    setDraggedProjectId(null);
+    setDragOverKey(null);
+  }
 
-          setDraggedProjectId(project.id);
-          e.dataTransfer.setData('text/plain', project.id);
-          e.dataTransfer.effectAllowed = 'move';
-        }}
-        onDragEnd={() => {
-          setDraggedProjectId(null);
-          setDragOverKey(null);
-        }}
-      >
-        <button
-          className="project-card-main"
-          onClick={() => navigate(`/projetos/${project.id}/quadro`)}
-          type="button"
-        >
-          <div className="stack">
-            <div className="badge-row">
-              <span className={`badge ${getProjectStatusTone(project.status)}`}>
-                {formatProjectStatus(project.status)}
-              </span>
-              <span className="badge badge-gray">
-                {project.members.length} participante{project.members.length === 1 ? '' : 's'}
-              </span>
-            </div>
-            <h2 className="project-card-title">{project.name}</h2>
-            {project.description ? (
-              <p className="project-card-copy">{project.description}</p>
-            ) : null}
-          </div>
-          <div className="project-meta">
-            <span>{project.owner.name}</span>
-            <span>{formatShortDate(project.deadline)}</span>
-          </div>
-        </button>
-        <div className="project-card-actions">
-          <Link className="text-button" to={`/projetos/${project.id}`}>
-            Ver detalhes
-          </Link>
-          <Link className="secondary-button project-card-board-link" to={`/projetos/${project.id}/quadro`}>
-            Abrir quadro
-          </Link>
-        </div>
-      </article>
-    );
+  function handleProjectDrop(projectId: string, folderId: string) {
+    void moveProjectMutation.mutateAsync({ projectId, folderId });
+    setDraggedProjectId(null);
+  }
+
+  function handleRenameFolder(folder: ProjectFolder) {
+    setRenamingFolder(folder);
+    setRenameValue(folder.name);
+    setRenameError(null);
+  }
+
+  function handleDeleteFolder(folder: ProjectFolder) {
+    if (
+      window.confirm(
+        `Apagar a pasta "${folder.name}"? Apenas pastas vazias podem ser apagadas.`,
+      )
+    ) {
+      void deleteFolderMutation.mutateAsync(folder.id);
+    }
   }
 
   const action = (
@@ -472,100 +346,32 @@ export function ProjectsPage() {
     const key = folder.id;
     const projects = groupedProjects.get(key) ?? [];
     const isOpen = openFolders.has(key);
-    const isDragOver = dragOverKey === key;
-    const targetFolderId = folder.id;
-    const canManageThisFolder = canManageFolder(folder);
-
-    function handleDrop(e: DragEvent) {
-      e.preventDefault();
-      setDragOverKey(null);
-      const projectId = e.dataTransfer.getData('text/plain');
-      if (!projectId) return;
-      void moveProjectMutation.mutateAsync({ projectId, folderId: targetFolderId });
-      setDraggedProjectId(null);
-    }
 
     return (
-      <section
+      <ProjectFolderSection
+        canManage={canManageFolder(folder)}
+        canMoveProject={canMoveProject}
+        deleteFolderDisabled={deleteFolderMutation.isPending}
+        dragOverKey={dragOverKey}
+        draggedProjectId={draggedProjectId}
+        folder={folder}
+        getRowShellClassName={getProjectRowShellClassName}
+        isAdmin={isAdmin}
+        isOpen={isOpen}
         key={key}
-        className={`folder-section${isDragOver ? ' folder-section-drop' : ''}`}
-        onDragOver={(e) => {
-          if (!draggedProjectId) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-          if (dragOverKey !== key) setDragOverKey(key);
-        }}
-        onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverKey(null);
-        }}
-        onDrop={draggedProjectId ? handleDrop : undefined}
-      >
-        <header className="folder-header">
-          <button
-            className="folder-toggle"
-            onClick={() => toggleFolder(key)}
-            type="button"
-            aria-expanded={isOpen}
-          >
-            <span className="folder-caret">{isOpen ? '▾' : '▸'}</span>
-            <span className="folder-title">
-              <span className="folder-emoji" aria-hidden="true">📁</span>
-              {folder.name}
-            </span>
-            <span className="folder-count">({projects.length})</span>
-            <span className="badge badge-gray">
-              {folder.visibility === 'SECRETARIAT' ? 'Secretaria' : 'Setor'}
-            </span>
-          </button>
-          {canManageThisFolder ? (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                className="text-button"
-                onClick={() => {
-                  setRenamingFolder(folder);
-                  setRenameValue(folder.name);
-                  setRenameError(null);
-                }}
-                type="button"
-              >
-                Renomear
-              </button>
-              <button
-                className="text-button"
-                disabled={deleteFolderMutation.isPending}
-                onClick={() => {
-                  if (window.confirm(`Apagar a pasta "${folder.name}"? Apenas pastas vazias podem ser apagadas.`)) {
-                    void deleteFolderMutation.mutateAsync(folder.id);
-                  }
-                }}
-                style={{ color: '#8c2f25' }}
-                type="button"
-              >
-                Apagar pasta
-              </button>
-            </div>
-          ) : null}
-        </header>
-        {isOpen ? (
-          projects.length > 0 ? (
-            <div className={getProjectRowShellClassName(folder.id)}>
-              <div
-                aria-label={`Projetos da pasta ${folder.name}`}
-                className="project-row-scroll"
-                onScroll={(event) => handleProjectRowScroll(event, folder.id)}
-                ref={(element) => registerProjectRow(folder.id, element)}
-                role="list"
-              >
-                {projects.map(renderProjectCard)}
-              </div>
-            </div>
-          ) : (
-            <p className="field-helper folder-empty">
-              {isAdmin ? 'Pasta vazia. Arraste projetos ate aqui para mover.' : 'Pasta vazia.'}
-            </p>
-          )
-        ) : null}
-      </section>
+        onClearDragOver={() => setDragOverKey(null)}
+        onDelete={handleDeleteFolder}
+        onDropProject={handleProjectDrop}
+        onFolderDragOver={setDragOverKey}
+        onOpenBoard={(projectId) => navigate(`/projetos/${projectId}/quadro`)}
+        onProjectDragEnd={handleProjectDragEnd}
+        onProjectDragStart={handleProjectDragStart}
+        onRename={handleRenameFolder}
+        onRowScroll={handleProjectRowScroll}
+        onToggle={toggleFolder}
+        projects={projects}
+        registerProjectRow={registerProjectRow}
+      />
     );
   }
 
@@ -626,310 +432,46 @@ export function ProjectsPage() {
         )
       ) : null}
 
-      <Modal
-        title="Renomear pasta"
-        description="Atualize o nome da pasta. Os projetos contidos sao mantidos."
-        open={Boolean(renamingFolder)}
+      <RenameFolderModal
+        error={renameError}
+        folder={renamingFolder}
+        isPending={renameFolderMutation.isPending}
         onClose={() => setRenamingFolder(null)}
-        footer={
-          <>
-            <button
-              className="secondary-button"
-              onClick={() => setRenamingFolder(null)}
-              type="button"
-            >
-              Cancelar
-            </button>
-            <button
-              className="primary-button"
-              disabled={renameFolderMutation.isPending || !renameValue.trim() || !renamingFolder}
-              onClick={() =>
-                renamingFolder &&
-                void renameFolderMutation.mutateAsync({
-                  folderId: renamingFolder.id,
-                  name: renameValue.trim(),
-                })
-              }
-              type="button"
-            >
-              {renameFolderMutation.isPending ? 'Salvando...' : 'Salvar'}
-            </button>
-          </>
+        onSave={(folderId, name) =>
+          void renameFolderMutation.mutateAsync({
+            folderId,
+            name,
+          })
         }
-      >
-        <div className="form-grid">
-          <div className="field-group">
-            <label className="field-label" htmlFor="rename-folder-name">Nome da pasta</label>
-            <input
-              autoFocus
-              className="field-input"
-              id="rename-folder-name"
-              onChange={(e) => setRenameValue(e.target.value)}
-              type="text"
-              value={renameValue}
-            />
-          </div>
-          {renameError ? <p className="form-error">{renameError}</p> : null}
-        </div>
-      </Modal>
+        onValueChange={setRenameValue}
+        value={renameValue}
+      />
 
-      <Modal
-        title="Nova pasta"
-        description="Pastas pertencem a um setor. Membros criam pastas apenas nos setores vinculados ao proprio usuario."
-        open={isCreateFolderOpen}
+      <CreateFolderModal
+        availableSectors={availableSectors}
+        error={folderError}
+        form={newFolderForm}
+        isPending={createFolderMutation.isPending}
+        onChange={setNewFolderForm}
         onClose={() => setIsCreateFolderOpen(false)}
-        footer={
-          <>
-            <button
-              className="secondary-button"
-              onClick={() => setIsCreateFolderOpen(false)}
-              type="button"
-            >
-              Cancelar
-            </button>
-            <button
-              className="primary-button"
-              disabled={
-                createFolderMutation.isPending ||
-                !newFolderForm.name.trim() ||
-                !newFolderForm.sectorId
-              }
-              onClick={() =>
-                void createFolderMutation.mutateAsync({
-                  ...newFolderForm,
-                  name: newFolderForm.name.trim(),
-                })
-              }
-              type="button"
-            >
-              {createFolderMutation.isPending ? 'Criando...' : 'Criar pasta'}
-            </button>
-          </>
-        }
-      >
-        <div className="form-grid">
-          <div className="field-group">
-            <label className="field-label" htmlFor="new-folder-name">Nome da pasta</label>
-            <input
-              autoFocus
-              className="field-input"
-              id="new-folder-name"
-              onChange={(e) =>
-                setNewFolderForm((current) => ({ ...current, name: e.target.value }))
-              }
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newFolderForm.name.trim() && newFolderForm.sectorId) {
-                  e.preventDefault();
-                  void createFolderMutation.mutateAsync({
-                    ...newFolderForm,
-                    name: newFolderForm.name.trim(),
-                  });
-                }
-              }}
-              type="text"
-              value={newFolderForm.name}
-            />
-          </div>
-          <div className="form-row">
-            <div className="field-group">
-              <label className="field-label" htmlFor="new-folder-sector">
-                Setor
-              </label>
-              <select
-                className="field-input"
-                id="new-folder-sector"
-                onChange={(event) =>
-                  setNewFolderForm((current) => ({
-                    ...current,
-                    sectorId: event.target.value,
-                  }))
-                }
-                required
-                value={newFolderForm.sectorId}
-              >
-                <option value="">Selecione</option>
-                {availableSectors.map((sector) => (
-                  <option key={sector.id} value={sector.id}>
-                    {sector.secretariat.name} / {sector.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+        onCreate={(form) => void createFolderMutation.mutateAsync(form)}
+        open={isCreateFolderOpen}
+      />
 
-            <div className="field-group">
-              <label className="field-label" htmlFor="new-folder-visibility">
-                Visibilidade
-              </label>
-              <select
-                className="field-input"
-                id="new-folder-visibility"
-                onChange={(event) =>
-                  setNewFolderForm((current) => ({
-                    ...current,
-                    visibility: event.target.value as FolderFormState['visibility'],
-                  }))
-                }
-                value={newFolderForm.visibility}
-              >
-                <option value="SECTOR">Privada do setor</option>
-                <option value="SECRETARIAT">Publica da secretaria</option>
-              </select>
-            </div>
-          </div>
-          {folderError ? <p className="form-error">{folderError}</p> : null}
-        </div>
-      </Modal>
-
-      <Modal
-        description="Cada projeto do MVP nasce com um board unico e as colunas fixas A fazer, Em andamento e Concluido."
-        footer={
-          <>
-            <button
-              className="secondary-button"
-              onClick={() => setIsCreateModalOpen(false)}
-              type="button"
-            >
-              Cancelar
-            </button>
-            <button
-              className="primary-button"
-              disabled={createProjectMutation.isPending || !projectForm.folderId}
-              form="create-project-form"
-              type="submit"
-            >
-              {createProjectMutation.isPending ? 'Salvando...' : 'Criar projeto'}
-            </button>
-          </>
-        }
+      <CreateProjectModal
+        availableUsers={availableUsers}
+        error={formError}
+        folderOptions={folderOptions}
+        form={projectForm}
+        isAdmin={isAdmin}
+        isPending={createProjectMutation.isPending}
+        onChange={updateProjectForm}
         onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateProject}
+        onToggleMember={toggleMember}
         open={isCreateModalOpen}
-        title="Novo projeto"
-      >
-        <form className="form-grid" id="create-project-form" onSubmit={handleCreateProject}>
-          <div className="field-group">
-            <label className="field-label" htmlFor="project-name">Nome</label>
-            <input
-              className="field-input"
-              id="project-name"
-              minLength={2}
-              onChange={(event) =>
-                setProjectForm((currentForm) => ({ ...currentForm, name: event.target.value }))
-              }
-              required
-              type="text"
-              value={projectForm.name}
-            />
-          </div>
-
-          <div className="field-group">
-            <label className="field-label" htmlFor="project-description">Descricao</label>
-            <textarea
-              className="field-input field-textarea"
-              id="project-description"
-              onChange={(event) =>
-                setProjectForm((currentForm) => ({ ...currentForm, description: event.target.value }))
-              }
-              rows={4}
-              value={projectForm.description}
-            />
-          </div>
-
-          <div className="field-group">
-            <label className="field-label" htmlFor="project-folder">Pasta</label>
-            <select
-              className="field-input"
-              id="project-folder"
-              onChange={(event) =>
-                setProjectForm((currentForm) => ({
-                  ...currentForm,
-                  folderId: event.target.value,
-                }))
-              }
-              required
-              value={projectForm.folderId}
-            >
-              <option value="">Selecione</option>
-              {folderOptions.map((folder) => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.sector.secretariat.name} / {folder.sector.name} / {folder.name}
-                </option>
-              ))}
-            </select>
-            <p className="field-helper">
-              A pasta define a secretaria/setor que podera visualizar este projeto.
-            </p>
-          </div>
-
-          <div className="form-row">
-            <div className="field-group">
-              <label className="field-label" htmlFor="project-deadline">Prazo (opcional)</label>
-              <input
-                className="field-input"
-                id="project-deadline"
-                onChange={(event) =>
-                  setProjectForm((currentForm) => ({ ...currentForm, deadline: event.target.value }))
-                }
-                type="date"
-                value={projectForm.deadline}
-              />
-              <p className="field-helper">Voce pode deixar este campo em branco no projeto.</p>
-            </div>
-
-            {isAdmin ? (
-              <div className="field-group">
-                <label className="field-label" htmlFor="project-owner">Dono</label>
-                <select
-                  className="field-input"
-                  id="project-owner"
-                  onChange={(event) =>
-                    setProjectForm((currentForm) => ({ ...currentForm, ownerId: event.target.value }))
-                  }
-                  required
-                  value={projectForm.ownerId}
-                >
-                  <option value="">Selecione</option>
-                  {availableUsers.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name} ({option.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-          </div>
-
-          {isAdmin ? (
-            <div className="field-group">
-              <span className="field-label">Membros iniciais</span>
-              <div className="checkbox-list">
-                {usersQuery.isLoading ? <p className="field-helper">Carregando usuarios...</p> : null}
-                {availableUsers.map((availableUser) => (
-                  <label className="checkbox-item" key={availableUser.id}>
-                    <input
-                      checked={projectForm.memberIds.includes(availableUser.id)}
-                      onChange={() => toggleMember(availableUser.id)}
-                      type="checkbox"
-                    />
-                    <span>
-                      {availableUser.name} <small>{availableUser.email}</small>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <p className="field-helper">O dono sempre sera incluido como gestor do projeto.</p>
-            </div>
-          ) : (
-            <p className="field-helper">
-              Voce sera registrado como gestor do projeto. Adicione participantes depois pela tela de detalhes.
-            </p>
-          )}
-
-          {formError ? <p className="form-error">{formError}</p> : null}
-          {projectForm.deadline ? (
-            <p className="field-helper">Prazo previsto: {formatLongDate(projectForm.deadline)}</p>
-          ) : null}
-        </form>
-      </Modal>
+        usersLoading={usersQuery.isLoading}
+      />
     </AppShell>
   );
 }
