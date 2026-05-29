@@ -12,6 +12,7 @@ import {
 import { AppShell } from '../components/app-shell';
 import { Modal } from '../components/modal';
 import { StatusState } from '../components/status-state';
+import { RenameProjectModal } from '../features/projects/project-modals';
 import { ApiError, api } from '../services/api';
 import type { ProjectRole } from '../types/api';
 
@@ -20,6 +21,9 @@ export function ProjectDetailPage() {
   const queryClient = useQueryClient();
   const { token, user } = useAuth();
   const { projectId = 'projeto' } = useParams();
+  const [isEditNameOpen, setIsEditNameOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
   const [isEditDescriptionOpen, setIsEditDescriptionOpen] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState('');
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
@@ -46,6 +50,28 @@ export function ProjectDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.removeQueries({ queryKey: ['project', projectId] });
       navigate('/projetos');
+    },
+  });
+
+  const updateNameMutation = useMutation({
+    mutationFn: (name: string) =>
+      api.updateProject(token!, projectId, {
+        name,
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
+        queryClient.invalidateQueries({ queryKey: ['projects'] }),
+      ]);
+      setIsEditNameOpen(false);
+      setNameError(null);
+    },
+    onError: (error) => {
+      setNameError(
+        error instanceof ApiError
+          ? error.message
+          : 'Nao foi possivel renomear o projeto.',
+      );
     },
   });
 
@@ -146,11 +172,30 @@ export function ProjectDetailPage() {
     setIsEditDescriptionOpen(true);
   }
 
+  function openEditNameModal() {
+    if (!project) {
+      return;
+    }
+
+    setNameDraft(project.name);
+    setNameError(null);
+    setIsEditNameOpen(true);
+  }
+
   const action = project ? (
     <div className="page-header-actions">
       <Link className="secondary-button" to="/projetos">
         Voltar aos projetos
       </Link>
+      {canManageProject ? (
+        <button
+          className="secondary-button"
+          onClick={openEditNameModal}
+          type="button"
+        >
+          Renomear projeto
+        </button>
+      ) : null}
       {canManageProject ? (
         <button
           className="secondary-button"
@@ -270,6 +315,19 @@ export function ProjectDetailPage() {
           {descriptionError ? <p className="form-error">{descriptionError}</p> : null}
         </div>
       </Modal>
+
+      <RenameProjectModal
+        error={nameError}
+        isPending={updateNameMutation.isPending}
+        onClose={() => {
+          setIsEditNameOpen(false);
+          setNameError(null);
+        }}
+        onSave={(_, name) => void updateNameMutation.mutateAsync(name)}
+        onValueChange={setNameDraft}
+        project={isEditNameOpen && project ? project : null}
+        value={nameDraft}
+      />
 
       <Modal
         title="Adicionar participante"
@@ -426,6 +484,15 @@ export function ProjectDetailPage() {
                 <Link className="secondary-button" to="/projetos">
                   Voltar
                 </Link>
+                {canManageProject ? (
+                  <button
+                    className="secondary-button"
+                    onClick={openEditNameModal}
+                    type="button"
+                  >
+                    Renomear projeto
+                  </button>
+                ) : null}
                 {canManageProject ? (
                   <button
                     className="secondary-button"

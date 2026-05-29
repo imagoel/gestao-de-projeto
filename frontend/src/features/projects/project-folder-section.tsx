@@ -21,6 +21,7 @@ type ProjectFolderSectionProps = {
   onProjectDragEnd: () => void;
   onProjectDragStart: (projectId: string, event: DragEvent<HTMLElement>) => void;
   onRename: (folder: ProjectFolder) => void;
+  onRenameProject: (project: Project) => void;
   onRowScroll: (event: UIEvent<HTMLDivElement>, folderId: string) => void;
   onToggle: (folderId: string) => void;
   projects: Project[];
@@ -45,6 +46,7 @@ export function ProjectFolderSection({
   onProjectDragEnd,
   onProjectDragStart,
   onRename,
+  onRenameProject,
   onRowScroll,
   onToggle,
   projects,
@@ -123,10 +125,12 @@ export function ProjectFolderSection({
               {projects.map((project) => (
                 <ProjectCard
                   canMove={canMoveProject(project)}
+                  canRename={canMoveProject(project)}
                   key={project.id}
                   onDragEnd={onProjectDragEnd}
                   onDragStart={onProjectDragStart}
                   onOpenBoard={onOpenBoard}
+                  onRename={onRenameProject}
                   project={project}
                 />
               ))}

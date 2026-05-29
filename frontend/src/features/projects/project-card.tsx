@@ -9,19 +9,23 @@ import {
 import type { Project } from '../../types/api';
 
 type ProjectCardProps = {
+  canRename: boolean;
   project: Project;
   canMove: boolean;
   onDragEnd: () => void;
   onDragStart: (projectId: string, event: DragEvent<HTMLElement>) => void;
   onOpenBoard: (projectId: string) => void;
+  onRename: (project: Project) => void;
 };
 
 export function ProjectCard({
+  canRename,
   project,
   canMove,
   onDragEnd,
   onDragStart,
   onOpenBoard,
+  onRename,
 }: ProjectCardProps) {
   const hasDescription = Boolean(project.description?.trim());
   const classNames = [
@@ -75,6 +79,17 @@ export function ProjectCard({
         <Link className="text-button" to={`/projetos/${project.id}`}>
           Ver detalhes
         </Link>
+        {canRename ? (
+          <button
+            aria-label={`Renomear projeto ${project.name}`}
+            className="text-button"
+            onClick={() => onRename(project)}
+            title="Renomear projeto"
+            type="button"
+          >
+            Editar
+          </button>
+        ) : null}
         <Link
           className="secondary-button project-card-board-link"
           to={`/projetos/${project.id}/quadro`}

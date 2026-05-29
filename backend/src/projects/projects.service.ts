@@ -163,6 +163,13 @@ export class ProjectsService {
       await this.usersService.ensureUsersExist([updateProjectDto.ownerId]);
     }
 
+    const name =
+      updateProjectDto.name === undefined ? undefined : updateProjectDto.name.trim();
+
+    if (name !== undefined && name.length < 2) {
+      throw new BadRequestException('O nome do projeto precisa ter pelo menos 2 caracteres.');
+    }
+
     if (updateProjectDto.folderId !== undefined) {
       await this.projectAccessService.ensureFolderAccess(
         currentUser,
@@ -174,7 +181,7 @@ export class ProjectsService {
       await tx.project.update({
         where: { id: project.id },
         data: {
-          name: updateProjectDto.name,
+          name,
           description:
             updateProjectDto.description === undefined
               ? undefined

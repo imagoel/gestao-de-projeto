@@ -14,6 +14,7 @@ import {
   CreateFolderModal,
   CreateProjectModal,
   RenameFolderModal,
+  RenameProjectModal,
 } from '../features/projects/project-modals';
 import { ProjectFolderSection } from '../features/projects/project-folder-section';
 import {
@@ -71,6 +72,9 @@ export function ProjectsPage() {
   const [renamingFolder, setRenamingFolder] = useState<ProjectFolder | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
+  const [renamingProject, setRenamingProject] = useState<Project | null>(null);
+  const [renameProjectValue, setRenameProjectValue] = useState('');
+  const [renameProjectError, setRenameProjectError] = useState<string | null>(null);
 
   const renameFolderMutation = useMutation({
     mutationFn: (payload: { folderId: string; name: string }) =>
@@ -84,6 +88,25 @@ export function ProjectsPage() {
     onError: (error) => {
       setRenameError(
         error instanceof ApiError ? error.message : 'Nao foi possivel renomear a pasta.',
+      );
+    },
+  });
+
+  const renameProjectMutation = useMutation({
+    mutationFn: (payload: { projectId: string; name: string }) =>
+      api.updateProject(token!, payload.projectId, { name: payload.name }),
+    onSuccess: async (project) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['projects'] }),
+        queryClient.invalidateQueries({ queryKey: ['project', project.id] }),
+      ]);
+      setRenamingProject(null);
+      setRenameProjectValue('');
+      setRenameProjectError(null);
+    },
+    onError: (error) => {
+      setRenameProjectError(
+        error instanceof ApiError ? error.message : 'Nao foi possivel renomear o projeto.',
       );
     },
   });
@@ -308,6 +331,12 @@ export function ProjectsPage() {
     setRenameError(null);
   }
 
+  function handleRenameProject(project: Project) {
+    setRenamingProject(project);
+    setRenameProjectValue(project.name);
+    setRenameProjectError(null);
+  }
+
   function handleDeleteFolder(folder: ProjectFolder) {
     if (
       window.confirm(
@@ -367,6 +396,7 @@ export function ProjectsPage() {
         onProjectDragEnd={handleProjectDragEnd}
         onProjectDragStart={handleProjectDragStart}
         onRename={handleRenameFolder}
+        onRenameProject={handleRenameProject}
         onRowScroll={handleProjectRowScroll}
         onToggle={toggleFolder}
         projects={projects}
@@ -445,6 +475,24 @@ export function ProjectsPage() {
         }
         onValueChange={setRenameValue}
         value={renameValue}
+      />
+
+      <RenameProjectModal
+        error={renameProjectError}
+        isPending={renameProjectMutation.isPending}
+        onClose={() => {
+          setRenamingProject(null);
+          setRenameProjectError(null);
+        }}
+        onSave={(projectId, name) =>
+          void renameProjectMutation.mutateAsync({
+            projectId,
+            name,
+          })
+        }
+        onValueChange={setRenameProjectValue}
+        project={renamingProject}
+        value={renameProjectValue}
       />
 
       <CreateFolderModal
