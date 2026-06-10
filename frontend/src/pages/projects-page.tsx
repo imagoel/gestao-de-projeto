@@ -121,6 +121,9 @@ export function ProjectsPage() {
     })) ?? [];
   const userSectorIds = new Set(availableSectors.map((sector) => sector.id));
   const canCreateFolder = availableSectors.length > 0;
+  const hasAvailableFolders = folderOptions.length > 0;
+  const isProjectCreationBlocked =
+    !foldersQuery.isLoading && !hasAvailableFolders;
 
   const visibleFolders = useMemo(() => {
     const foldersById = new Map<string, ProjectFolder>();
@@ -260,6 +263,11 @@ export function ProjectsPage() {
   });
 
   function openCreateModal() {
+    if (!hasAvailableFolders) {
+      setFormError('Crie uma pasta antes de cadastrar projetos.');
+      return;
+    }
+
     setProjectForm({
       ...initialProjectForm,
       ownerId: user?.id ?? '',
@@ -365,7 +373,17 @@ export function ProjectsPage() {
           Nova pasta
         </button>
       ) : null}
-      <button className="primary-button" onClick={openCreateModal} type="button">
+      <button
+        className="primary-button"
+        disabled={foldersQuery.isLoading || isProjectCreationBlocked}
+        onClick={openCreateModal}
+        title={
+          isProjectCreationBlocked
+            ? 'Crie uma pasta antes de cadastrar projetos.'
+            : undefined
+        }
+        type="button"
+      >
         Novo projeto
       </button>
     </div>
@@ -453,9 +471,13 @@ export function ProjectsPage() {
           <StatusState
             title="Nenhum projeto disponivel"
             copy={
-              isAdmin
-                ? 'Crie o primeiro projeto para iniciar o quadro Kanban do MVP.'
-                : 'Voce ainda nao participa de nenhum projeto.'
+              isProjectCreationBlocked
+                ? canCreateFolder
+                  ? 'Crie uma pasta antes de cadastrar projetos.'
+                  : 'Nenhuma pasta disponivel. Seu usuario precisa estar vinculado a um setor para criar pastas e projetos.'
+                : isAdmin
+                  ? 'Crie o primeiro projeto para iniciar o quadro Kanban do MVP.'
+                  : 'Voce ainda nao participa de nenhum projeto.'
             }
             action={action}
           />
