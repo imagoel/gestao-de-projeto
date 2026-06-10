@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useAuth } from "../app/auth-provider";
@@ -11,6 +6,10 @@ import { toDateInputValue } from "../app/formatters";
 import { AppShell } from "../components/app-shell";
 import { StatusState } from "../components/status-state";
 import { ArchivedCardsModal } from "../features/board/archived-cards-modal";
+import {
+  BoardPageProvider,
+  useBoardPageContext,
+} from "../features/board/board-page-context";
 import { BoardColumn as BoardColumnView } from "../features/board/board-column";
 import {
   initialCreateCardForm,
@@ -24,16 +23,27 @@ import { isCompletedColumnTitle } from "../features/board/board-utils";
 import { CardDetailModal } from "../features/board/card-detail-modal";
 import { CreateCardModal } from "../features/board/create-card-modal";
 import { NewColumnModal } from "../features/board/new-column-modal";
+import { useBoardCardActions } from "../features/board/use-board-card-actions";
 import { useBoardCardDrag } from "../features/board/use-board-card-drag";
+import { useBoardChecklistActions } from "../features/board/use-board-checklist-actions";
+import { useBoardColumnActions } from "../features/board/use-board-column-actions";
 import { useBoardColumnScroll } from "../features/board/use-board-column-scroll";
+import { useBoardDescriptionActions } from "../features/board/use-board-description-actions";
 import { useProjectBoardData } from "../features/board/use-project-board-data";
-import { ApiError, api } from "../services/api";
-import type { BoardCard, BoardColumn, CardPriority, ChecklistItem } from "../types/api";
 
 export function ProjectBoardPage() {
-  const queryClient = useQueryClient();
   const { token, user } = useAuth();
   const { projectId = "" } = useParams();
+
+  return (
+    <BoardPageProvider projectId={projectId} token={token} user={user}>
+      <ProjectBoardPageContent />
+    </BoardPageProvider>
+  );
+}
+
+function ProjectBoardPageContent() {
+  const { projectId, token, user } = useBoardPageContext();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
@@ -44,14 +54,7 @@ export function ProjectBoardPage() {
     useState<EditCardFormState>(initialEditCardForm);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
-  const [checklistError, setChecklistError] = useState<string | null>(null);
-  const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [boardActionError, setBoardActionError] = useState<string | null>(null);
-  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
-  const [editingColumnTitle, setEditingColumnTitle] = useState('');
-  const [newColumnTitle, setNewColumnTitle] = useState('');
-  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
-  const [columnError, setColumnError] = useState<string | null>(null);
 
   const {
     archivedCardsQuery,
@@ -71,6 +74,27 @@ export function ProjectBoardPage() {
     token,
     user,
   });
+
+  const {
+    addColumnMutation,
+    columnError,
+    deleteColumnMutation,
+    editingColumnId,
+    editingColumnTitle,
+    handleDeleteColumn,
+    handleRenameColumn,
+    handleStartEditingColumn,
+    isAddColumnOpen,
+    newColumnTitle,
+    reorderColumnMutation,
+    setColumnError,
+    setEditingColumnId,
+    setEditingColumnTitle,
+    setIsAddColumnOpen,
+    setNewColumnTitle,
+  } = useBoardColumnActions({
+    boardId: boardQuery.data?.id,
+  });
   const {
     getColumnScrollClassNames,
     handleColumnScroll,
@@ -78,199 +102,46 @@ export function ProjectBoardPage() {
     registerColumnBody,
     showColumnScrollLimit,
   } = useBoardColumnScroll(columns);
-
-  useEffect(() => {
-    if (!cardQuery.data) {
-      return;
-    }
-
-    const assigneeId =
-      cardQuery.data.assignee?.id ?? memberOptions[0]?.id ?? "";
-
-    // Only set form if we have a valid assignee or member options
-    if (!assigneeId && memberOptions.length === 0) {
-      // Card has no assignee and no members available - keep it empty but valid
-      setEditCardForm({
-        assigneeId: "",
-        dueDate: toDateInputValue(cardQuery.data.dueDate),
-        priority: cardQuery.data.priority,
-        title: cardQuery.data.title,
-      });
-    } else {
-      setEditCardForm({
-        assigneeId,
-        dueDate: toDateInputValue(cardQuery.data.dueDate),
-        priority: cardQuery.data.priority,
-        title: cardQuery.data.title,
-      });
-    }
-    setEditError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardQuery.data?.id]);
-
-  const createCardMutation = useMutation({
-    mutationFn: () =>
-      api.createCard(token!, createCardForm.columnId, {
-        assigneeId: createCardForm.assigneeId,
-        dueDate: createCardForm.dueDate || null,
-        priority: createCardForm.priority,
-        title: createCardForm.title,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
-      setIsCreateModalOpen(false);
-      setCreateCardForm(initialCreateCardForm);
-      setCreateError(null);
-    },
-    onError: (error) => {
-      setCreateError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel criar o card.",
-      );
-    },
+  const {
+    checklistError,
+    createChecklistItemMutation,
+    deleteChecklistItemMutation,
+    handleChecklistDelete,
+    handleChecklistMove,
+    handleChecklistReferenceClick,
+    handleChecklistRename,
+    handleChecklistToggle,
+    reorderChecklistItemMutation,
+    setChecklistError,
+    updateChecklistItemMutation,
+  } = useBoardChecklistActions({ selectedCardId });
+  const {
+    createCardDescriptionMutation,
+    deleteCardDescriptionMutation,
+    descriptionError,
+    setDescriptionError,
+    updateCardDescriptionMutation,
+  } = useBoardDescriptionActions({ selectedCardId });
+  const {
+    archiveCardMutation,
+    createCardMutation,
+    dragMoveCardMutation,
+    handleCreateCard,
+    handleRenameCard,
+    handleSaveCard,
+    restoreCardMutation,
+    saveCardMutation,
+  } = useBoardCardActions({
+    createCardForm,
+    editCardForm,
+    selectedCardId,
+    setBoardActionError,
+    setCreateCardForm,
+    setCreateError,
+    setEditError,
+    setIsCreateModalOpen,
+    setSelectedCardId,
   });
-
-  const saveCardMutation = useMutation({
-    mutationFn: () => {
-      if (!selectedCardId) {
-        throw new Error("Card nao selecionado.");
-      }
-
-      return api.updateCard(token!, selectedCardId, {
-        assigneeId: editCardForm.assigneeId,
-        dueDate: editCardForm.dueDate || null,
-        priority: editCardForm.priority,
-        title: editCardForm.title,
-      });
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["board", projectId] }),
-        queryClient.invalidateQueries({ queryKey: ["card", selectedCardId] }),
-        queryClient.invalidateQueries({ queryKey: ["archived-cards", projectId] }),
-      ]);
-      setSelectedCardId(null);
-      setEditError(null);
-    },
-    onError: (error) => {
-      setEditError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel salvar o card.",
-      );
-    },
-  });
-
-  const createCardDescriptionMutation = useMutation({
-    mutationFn: async (content: string) => {
-      if (!selectedCardId) {
-        throw new Error("Card nao selecionado.");
-      }
-
-      return api.createCardComment(token!, selectedCardId, { content });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["card-comments", selectedCardId],
-      });
-      setDescriptionError(null);
-    },
-    onError: (error) => {
-      setDescriptionError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel registrar a descricao do card.",
-      );
-    },
-  });
-
-  const updateCardDescriptionMutation = useMutation({
-    mutationFn: async (payload: { commentId: string; content: string }) =>
-      api.updateCardComment(token!, payload.commentId, { content: payload.content }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["card-comments", selectedCardId],
-      });
-      setDescriptionError(null);
-    },
-    onError: (error) => {
-      setDescriptionError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel editar a descricao do card.",
-      );
-    },
-  });
-
-  const deleteCardDescriptionMutation = useMutation({
-    mutationFn: async (commentId: string) => api.deleteCardComment(token!, commentId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["card-comments", selectedCardId],
-      });
-      setDescriptionError(null);
-    },
-    onError: (error) => {
-      setDescriptionError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel apagar a descricao do card.",
-      );
-    },
-  });
-
-  const archiveCardMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedCardId) {
-        throw new Error("Card nao selecionado.");
-      }
-
-      return api.archiveCard(token!, selectedCardId);
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["board", projectId] }),
-        queryClient.invalidateQueries({ queryKey: ["card", selectedCardId] }),
-      ]);
-      setSelectedCardId(null);
-      setEditError(null);
-    },
-    onError: (error) => {
-      setEditError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel arquivar o card.",
-      );
-    },
-  });
-
-  const dragMoveCardMutation = useMutation({
-    mutationFn: async (payload: {
-      cardId: string;
-      targetColumnId: string;
-      targetPosition: number;
-    }) =>
-      api.moveCard(token!, payload.cardId, {
-        targetColumnId: payload.targetColumnId,
-        targetPosition: payload.targetPosition,
-      }),
-    onSuccess: async (_, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["board", projectId] }),
-        queryClient.invalidateQueries({ queryKey: ["card", variables.cardId] }),
-      ]);
-      setBoardActionError(null);
-    },
-    onError: (error) => {
-      setBoardActionError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel mover o card no quadro.",
-      );
-    },
-  });
-
   const {
     dragCardId,
     getColumnBodyClassName,
@@ -291,208 +162,23 @@ export function ProjectBoardPage() {
     showColumnScrollLimit,
   });
 
-  const restoreCardMutation = useMutation({
-    mutationFn: async (cardId: string) => api.restoreCard(token!, cardId),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["board", projectId] }),
-        queryClient.invalidateQueries({ queryKey: ["archived-cards", projectId] }),
-      ]);
-      setBoardActionError(null);
-    },
-    onError: (error) => {
-      setBoardActionError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel restaurar o card arquivado.",
-      );
-    },
-  });
+  useEffect(() => {
+    if (!cardQuery.data) {
+      return;
+    }
 
-  const renameColumnMutation = useMutation({
-    mutationFn: async (payload: { columnId: string; title: string }) =>
-      api.updateColumn(token!, payload.columnId, { title: payload.title }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
-      setEditingColumnId(null);
-      setColumnError(null);
-    },
-    onError: (error) => {
-      setColumnError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel renomear a coluna.",
-      );
-    },
-  });
+    const assigneeId =
+      cardQuery.data.assignee?.id ?? memberOptions[0]?.id ?? "";
 
-  const addColumnMutation = useMutation({
-    mutationFn: async (title: string) => {
-      const board = boardQuery.data;
-      if (!board) throw new Error("Board nao encontrado.");
-      return api.createColumn(token!, board.id, { title });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
-      setNewColumnTitle("");
-      setIsAddColumnOpen(false);
-      setColumnError(null);
-    },
-    onError: (error) => {
-      setColumnError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel adicionar a coluna.",
-      );
-    },
-  });
-
-  const deleteColumnMutation = useMutation({
-    mutationFn: async (columnId: string) => api.deleteColumn(token!, columnId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
-      setColumnError(null);
-    },
-    onError: (error) => {
-      setColumnError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel remover a coluna.",
-      );
-    },
-  });
-
-  const renameCardMutation = useMutation({
-    mutationFn: async (payload: {
-      cardId: string;
-      title: string;
-      assigneeId: string;
-      priority: CardPriority;
-      description?: string | null;
-      dueDate?: string | null;
-    }) =>
-      api.updateCard(token!, payload.cardId, {
-        title: payload.title,
-        assigneeId: payload.assigneeId,
-        priority: payload.priority,
-        description: payload.description ?? undefined,
-        dueDate: payload.dueDate ?? null,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
-      setBoardActionError(null);
-    },
-    onError: (error) => {
-      setBoardActionError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel renomear o card.",
-      );
-    },
-  });
-
-  const reorderColumnMutation = useMutation({
-    mutationFn: async (payload: { columnId: string; targetPosition: number }) =>
-      api.reorderColumn(token!, payload.columnId, {
-        targetPosition: payload.targetPosition,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["board", projectId] });
-      setColumnError(null);
-    },
-    onError: (error) => {
-      setColumnError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel reordenar a coluna.",
-      );
-    },
-  });
-
-  const createChecklistItemMutation = useMutation({
-    mutationFn: async (title: string) => {
-      if (!selectedCardId) {
-        throw new Error("Card nao selecionado.");
-      }
-
-      return api.createChecklistItem(token!, selectedCardId, { title });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["checklist", selectedCardId],
-      });
-      setChecklistError(null);
-    },
-    onError: (error) => {
-      setChecklistError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel criar o item do checklist.",
-      );
-    },
-  });
-
-  const updateChecklistItemMutation = useMutation({
-    mutationFn: async (payload: {
-      itemId: string;
-      title?: string;
-      done?: boolean;
-    }) =>
-      api.updateChecklistItem(token!, payload.itemId, {
-        title: payload.title,
-        done: payload.done,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["checklist", selectedCardId],
-      });
-      setChecklistError(null);
-    },
-    onError: (error) => {
-      setChecklistError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel atualizar o checklist.",
-      );
-    },
-  });
-
-  const reorderChecklistItemMutation = useMutation({
-    mutationFn: async (payload: { itemId: string; targetPosition: number }) =>
-      api.reorderChecklistItem(token!, payload.itemId, {
-        targetPosition: payload.targetPosition,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["checklist", selectedCardId],
-      });
-      setChecklistError(null);
-    },
-    onError: (error) => {
-      setChecklistError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel reordenar o checklist.",
-      );
-    },
-  });
-
-  const deleteChecklistItemMutation = useMutation({
-    mutationFn: async (itemId: string) => api.deleteChecklistItem(token!, itemId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["checklist", selectedCardId],
-      });
-      setChecklistError(null);
-    },
-    onError: (error) => {
-      setChecklistError(
-        error instanceof ApiError
-          ? error.message
-          : "Nao foi possivel excluir o item do checklist.",
-      );
-    },
-  });
+    setEditCardForm({
+      assigneeId,
+      dueDate: toDateInputValue(cardQuery.data.dueDate),
+      priority: cardQuery.data.priority,
+      title: cardQuery.data.title,
+    });
+    setEditError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardQuery.data?.id]);
 
   function openCreateCardModal(columnId?: string) {
     setCreateCardForm({
@@ -518,17 +204,6 @@ export function ProjectBoardPage() {
     setSelectedCardId(cardId);
   }
 
-  async function handleCreateCard(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setCreateError(null);
-    await createCardMutation.mutateAsync();
-  }
-
-  async function handleSaveCard(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setEditError(null);
-    await saveCardMutation.mutateAsync();
-  }
   const canCreateCard =
     canEditProject && columns.length > 0 && memberOptions.length > 0;
   const currentCardColumnName = columns.find(
@@ -557,84 +232,8 @@ export function ProjectBoardPage() {
     archivedCardsQuery.error instanceof Error
       ? archivedCardsQuery.error.message
       : null;
-
-  async function handleChecklistToggle(item: ChecklistItem) {
-    await updateChecklistItemMutation.mutateAsync({
-      itemId: item.id,
-      done: !item.done,
-    });
-  }
-
-  async function handleChecklistRename(item: ChecklistItem, title: string) {
-    await updateChecklistItemMutation.mutateAsync({
-      itemId: item.id,
-      title,
-    });
-  }
-
-  async function handleChecklistMove(
-    item: ChecklistItem,
-    targetPosition: number,
-  ) {
-    await reorderChecklistItemMutation.mutateAsync({
-      itemId: item.id,
-      targetPosition,
-    });
-  }
-
-  async function handleChecklistDelete(item: ChecklistItem) {
-    await deleteChecklistItemMutation.mutateAsync(item.id);
-  }
-
-  function handleChecklistReferenceClick(referenceId: string) {
-    const checklistItem = document.querySelector<HTMLElement>(
-      `[data-checklist-item-id="${referenceId}"]`,
-    );
-
-    if (!checklistItem) {
-      return;
-    }
-
-    checklistItem.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-    checklistItem.classList.add("checklist-item-highlight");
-
-    window.setTimeout(() => {
-      checklistItem.classList.remove("checklist-item-highlight");
-    }, 1200);
-  }
-
-  function handleStartEditingColumn(column: BoardColumn) {
-    setEditingColumnId(column.id);
-    setEditingColumnTitle(column.title);
-  }
-
-  function handleRenameColumn(columnId: string, title: string) {
-    void renameColumnMutation.mutateAsync({ columnId, title });
-  }
-
-  function handleDeleteColumn(column: BoardColumn) {
-    if (
-      window.confirm(
-        `Remover a coluna "${column.title}"? Cards ativos impedem a remocao.`,
-      )
-    ) {
-      void deleteColumnMutation.mutateAsync(column.id);
-    }
-  }
-
-  function handleRenameCard(card: BoardCard, title: string) {
-    void renameCardMutation.mutateAsync({
-      cardId: card.id,
-      title,
-      assigneeId: card.assignee?.id ?? "",
-      priority: card.priority,
-      description: card.description,
-      dueDate: card.dueDate,
-    });
-  }
+  const isColumnActionPending =
+    deleteColumnMutation.isPending || reorderColumnMutation.isPending;
 
   return (
     <AppShell
@@ -742,10 +341,7 @@ export function ProjectBoardPage() {
                 editingColumnTitle={editingColumnTitle}
                 getColumnBodyClassName={getColumnBodyClassName}
                 getDropZoneClassName={getDropZoneClassName}
-                isColumnActionPending={
-                  deleteColumnMutation.isPending ||
-                  reorderColumnMutation.isPending
-                }
+                isColumnActionPending={isColumnActionPending}
                 isCompletedColumn={isCompletedColumnTitle(column.title)}
                 key={column.id}
                 registerColumnBody={registerColumnBody}
