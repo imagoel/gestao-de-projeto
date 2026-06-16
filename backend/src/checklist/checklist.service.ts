@@ -17,7 +17,7 @@ export class ChecklistService {
 
   async findAll(user: AuthenticatedUser, cardId: string) {
     const card = await this.findCardContext(cardId);
-    await this.projectAccessService.ensureProjectAccess(user, card.column.board.projectId);
+    await this.projectAccessService.ensureProjectReadAccess(user, card.column.board.projectId);
 
     return this.prisma.checklistItem.findMany({
       where: { cardId },
@@ -33,7 +33,7 @@ export class ChecklistService {
     createChecklistItemDto: CreateChecklistItemDto,
   ) {
     const card = await this.findCardContext(cardId);
-    await this.projectAccessService.ensureProjectAccess(user, card.column.board.projectId);
+    await this.projectAccessService.ensureProjectReadAccess(user, card.column.board.projectId);
     await this.projectAccessService.ensureProjectWriteAccess(user, card.column.board.projectId);
     this.ensureCardIsActive(card.archived);
 
@@ -58,7 +58,7 @@ export class ChecklistService {
 
   async update(user: AuthenticatedUser, id: string, updateChecklistItemDto: UpdateChecklistItemDto) {
     const checklistItem = await this.findChecklistItemContext(id);
-    await this.projectAccessService.ensureProjectAccess(
+    await this.projectAccessService.ensureProjectReadAccess(
       user,
       checklistItem.card.column.board.projectId,
     );
@@ -103,7 +103,7 @@ export class ChecklistService {
     reorderChecklistItemDto: ReorderChecklistItemDto,
   ) {
     const checklistItem = await this.findChecklistItemContext(id);
-    await this.projectAccessService.ensureProjectAccess(
+    await this.projectAccessService.ensureProjectReadAccess(
       user,
       checklistItem.card.column.board.projectId,
     );
@@ -151,7 +151,7 @@ export class ChecklistService {
 
   async remove(user: AuthenticatedUser, id: string) {
     const checklistItem = await this.findChecklistItemContext(id);
-    await this.projectAccessService.ensureProjectAccess(
+    await this.projectAccessService.ensureProjectReadAccess(
       user,
       checklistItem.card.column.board.projectId,
     );

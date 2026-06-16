@@ -61,7 +61,7 @@ export class ProjectsService {
 
   async findAll(user: AuthenticatedUser) {
     return this.prisma.project.findMany({
-      where: this.projectAccessService.buildProjectAccessWhere(user),
+      where: this.projectAccessService.buildProjectReadWhere(user),
       include: projectDetailsInclude,
       orderBy: {
         createdAt: 'asc',
@@ -70,7 +70,7 @@ export class ProjectsService {
   }
 
   async findOne(user: AuthenticatedUser, id: string) {
-    await this.projectAccessService.ensureProjectAccess(user, id);
+    await this.projectAccessService.ensureProjectReadAccess(user, id);
     await this.ensureProjectBoard(id);
 
     return this.prisma.project.findUniqueOrThrow({

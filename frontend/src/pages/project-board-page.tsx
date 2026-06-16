@@ -59,12 +59,12 @@ function ProjectBoardPageContent() {
   const {
     archivedCardsQuery,
     boardQuery,
-    canEditProject,
+    canWriteProject,
     cardQuery,
     checklistQuery,
     columns,
     commentsQuery,
-    isReadOnlyProject,
+    hasReadOnlyProjectAccess,
     memberOptions,
     projectQuery,
   } = useProjectBoardData({
@@ -154,7 +154,7 @@ function ProjectBoardPageContent() {
     handleDropTargetDragOver,
     isDraggingCard,
   } = useBoardCardDrag({
-    canEditProject,
+    canWriteProject,
     getColumnScrollClassNames,
     isMovePending: dragMoveCardMutation.isPending,
     onMoveCard: (payload) => dragMoveCardMutation.mutateAsync(payload),
@@ -205,7 +205,7 @@ function ProjectBoardPageContent() {
   }
 
   const canCreateCard =
-    canEditProject && columns.length > 0 && memberOptions.length > 0;
+    canWriteProject && columns.length > 0 && memberOptions.length > 0;
   const currentCardColumnName = columns.find(
     (column) => column.id === cardQuery.data?.columnId,
   )?.title;
@@ -252,7 +252,7 @@ function ProjectBoardPageContent() {
           >
             Arquivados
           </button>
-          {SHOW_COLUMN_MANAGEMENT && canEditProject ? (
+          {SHOW_COLUMN_MANAGEMENT && canWriteProject ? (
             <button
               className="secondary-button"
               onClick={() => {
@@ -276,7 +276,7 @@ function ProjectBoardPageContent() {
         </div>
       }
     >
-      {isReadOnlyProject ? (
+      {hasReadOnlyProjectAccess ? (
         <p className="field-helper board-inline-note">
           Seu perfil neste projeto e somente leitura. Voce pode acompanhar o
           board e abrir os cards, mas sem alterar conteudo.
@@ -333,7 +333,7 @@ function ProjectBoardPageContent() {
           <section className="board-grid">
             {columns.map((column) => (
               <BoardColumnView
-                canEditProject={canEditProject}
+                canWriteProject={canWriteProject}
                 column={column}
                 columnCount={columns.length}
                 dragCardId={dragCardId}
@@ -390,7 +390,7 @@ function ProjectBoardPageContent() {
       />
 
       <ArchivedCardsModal
-        canEditProject={canEditProject}
+        canWriteProject={canWriteProject}
         cards={archivedCards}
         errorMessage={archivedCardsErrorMessage}
         isLoading={archivedCardsQuery.isLoading}
@@ -414,7 +414,7 @@ function ProjectBoardPageContent() {
       />
 
       <CardDetailModal
-        canEditProject={canEditProject}
+        canWriteProject={canWriteProject}
         card={cardQuery.data}
         cardDescriptionErrorMessage={cardDescriptionErrorMessage}
         cardDescriptions={cardDescriptions}

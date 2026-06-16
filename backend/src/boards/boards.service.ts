@@ -14,7 +14,7 @@ export class BoardsService {
   ) {}
 
   async findProjectBoard(user: AuthenticatedUser, projectId: string) {
-    await this.projectAccessService.ensureProjectAccess(user, projectId);
+    await this.projectAccessService.ensureProjectReadAccess(user, projectId);
     await this.ensureProjectBoard(projectId);
 
     const board = await this.prisma.board.findUnique({

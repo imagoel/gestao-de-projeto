@@ -16,7 +16,7 @@ export class CommentsService {
 
   async findAll(user: AuthenticatedUser, cardId: string) {
     const card = await this.findCardContext(cardId);
-    await this.projectAccessService.ensureProjectAccess(user, card.column.board.projectId);
+    await this.projectAccessService.ensureProjectReadAccess(user, card.column.board.projectId);
 
     return this.prisma.comment.findMany({
       where: { cardId },
@@ -33,7 +33,7 @@ export class CommentsService {
 
   async create(user: AuthenticatedUser, cardId: string, createCommentDto: CreateCommentDto) {
     const card = await this.findCardContext(cardId);
-    await this.projectAccessService.ensureProjectAccess(user, card.column.board.projectId);
+    await this.projectAccessService.ensureProjectReadAccess(user, card.column.board.projectId);
     await this.projectAccessService.ensureProjectWriteAccess(user, card.column.board.projectId);
 
     if (card.archived) {
@@ -64,7 +64,7 @@ export class CommentsService {
     const comment = await this.findCommentContext(id);
     const projectId = comment.card.column.board.projectId;
 
-    await this.projectAccessService.ensureProjectAccess(user, projectId);
+    await this.projectAccessService.ensureProjectReadAccess(user, projectId);
     await this.projectAccessService.ensureProjectWriteAccess(user, projectId);
 
     if (comment.card.archived) {
@@ -92,7 +92,7 @@ export class CommentsService {
     const comment = await this.findCommentContext(id);
     const projectId = comment.card.column.board.projectId;
 
-    await this.projectAccessService.ensureProjectAccess(user, projectId);
+    await this.projectAccessService.ensureProjectReadAccess(user, projectId);
     await this.projectAccessService.ensureProjectWriteAccess(user, projectId);
 
     if (comment.card.archived) {

@@ -11,7 +11,7 @@ import type { CardDetail } from "../../types/api";
 
 type ArchivedCardsModalProps = {
   cards: CardDetail[];
-  canEditProject: boolean;
+  canWriteProject: boolean;
   errorMessage?: string | null;
   isLoading: boolean;
   isRestoring: boolean;
@@ -22,7 +22,7 @@ type ArchivedCardsModalProps = {
 
 export function ArchivedCardsModal({
   cards,
-  canEditProject,
+  canWriteProject,
   errorMessage,
   isLoading,
   isRestoring,
@@ -87,7 +87,7 @@ export function ArchivedCardsModal({
                   <div className="archived-card-actions">
                     <button
                       className="secondary-button"
-                      disabled={!canEditProject || isRestoring}
+                      disabled={!canWriteProject || isRestoring}
                       onClick={() => onRestore(card.id)}
                       type="button"
                     >
@@ -104,7 +104,7 @@ export function ArchivedCardsModal({
           )
         ) : null}
 
-        {!canEditProject ? (
+        {!canWriteProject ? (
           <p className="field-helper">
             Seu perfil neste projeto e somente leitura. Os cards arquivados seguem
             visiveis, mas sem restauracao.
@@ -114,4 +114,3 @@ export function ArchivedCardsModal({
     </Modal>
   );
 }
-

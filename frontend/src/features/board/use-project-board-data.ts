@@ -67,24 +67,26 @@ export function useProjectBoardData({
   const currentProjectMember = projectQuery.data?.members.find(
     (member) => member.user.id === user?.id,
   );
-  const canEditProject = Boolean(
+  const canWriteProject = Boolean(
     user &&
       (user.role === "ADMIN" ||
         projectQuery.data?.ownerId === user.id ||
         currentProjectMember?.role === "MANAGER" ||
         currentProjectMember?.role === "MEMBER"),
   );
-  const isReadOnlyProject = Boolean(projectQuery.data && !canEditProject);
+  const hasReadOnlyProjectAccess = Boolean(
+    projectQuery.data && !canWriteProject,
+  );
 
   return {
     archivedCardsQuery,
     boardQuery,
-    canEditProject,
+    canWriteProject,
     cardQuery,
     checklistQuery,
     columns,
     commentsQuery,
-    isReadOnlyProject,
+    hasReadOnlyProjectAccess,
     memberOptions,
     projectQuery,
   };

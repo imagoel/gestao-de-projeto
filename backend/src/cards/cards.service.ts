@@ -27,7 +27,7 @@ export class CardsService {
     createCardDto: CreateCardDto,
   ) {
     const column = await this.getColumnWithProject(columnId);
-    await this.projectAccessService.ensureProjectAccess(
+    await this.projectAccessService.ensureProjectReadAccess(
       user,
       column.board.projectId,
     );
@@ -63,7 +63,7 @@ export class CardsService {
 
   async findOne(user: AuthenticatedUser, id: string) {
     const card = await this.findCardWithProject(id);
-    await this.projectAccessService.ensureProjectAccess(
+    await this.projectAccessService.ensureProjectReadAccess(
       user,
       card.column.board.projectId,
     );
@@ -71,7 +71,7 @@ export class CardsService {
   }
 
   async findArchivedByProject(user: AuthenticatedUser, projectId: string) {
-    await this.projectAccessService.ensureProjectAccess(user, projectId);
+    await this.projectAccessService.ensureProjectReadAccess(user, projectId);
 
     return this.prisma.card.findMany({
       where: {
@@ -96,7 +96,7 @@ export class CardsService {
   ) {
     const card = await this.findCardWithProject(id);
 
-    await this.projectAccessService.ensureProjectAccess(
+    await this.projectAccessService.ensureProjectReadAccess(
       user,
       card.column.board.projectId,
     );
@@ -128,7 +128,7 @@ export class CardsService {
 
   async move(user: AuthenticatedUser, id: string, moveCardDto: MoveCardDto) {
     const card = await this.findCardWithProject(id);
-    await this.projectAccessService.ensureProjectAccess(
+    await this.projectAccessService.ensureProjectReadAccess(
       user,
       card.column.board.projectId,
     );
@@ -235,7 +235,7 @@ export class CardsService {
 
   async archive(user: AuthenticatedUser, id: string) {
     const card = await this.findCardWithProject(id);
-    await this.projectAccessService.ensureProjectAccess(
+    await this.projectAccessService.ensureProjectReadAccess(
       user,
       card.column.board.projectId,
     );
@@ -286,7 +286,7 @@ export class CardsService {
 
   async restore(user: AuthenticatedUser, id: string) {
     const card = await this.findCardWithProject(id);
-    await this.projectAccessService.ensureProjectAccess(
+    await this.projectAccessService.ensureProjectReadAccess(
       user,
       card.column.board.projectId,
     );

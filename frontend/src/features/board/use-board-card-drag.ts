@@ -15,7 +15,7 @@ type MoveCardPayload = {
 };
 
 type UseBoardCardDragParams = {
-  canEditProject: boolean;
+  canWriteProject: boolean;
   getColumnScrollClassNames: (columnId: string) => string[];
   isMovePending: boolean;
   onMoveCard: (payload: MoveCardPayload) => Promise<unknown>;
@@ -24,7 +24,7 @@ type UseBoardCardDragParams = {
 };
 
 export function useBoardCardDrag({
-  canEditProject,
+  canWriteProject,
   getColumnScrollClassNames,
   isMovePending,
   onMoveCard,
@@ -42,7 +42,7 @@ export function useBoardCardDrag({
     sourceColumnId: string,
     sourcePosition: number,
   ) {
-    if (!canEditProject) {
+    if (!canWriteProject) {
       return;
     }
 
@@ -68,7 +68,7 @@ export function useBoardCardDrag({
     columnId: string,
     position: number,
   ) {
-    if (!dragCard || !canEditProject || isMovePending) {
+    if (!dragCard || !canWriteProject || isMovePending) {
       return;
     }
 
@@ -105,7 +105,7 @@ export function useBoardCardDrag({
     event: DragEvent<HTMLDivElement>,
     column: BoardColumn,
   ) {
-    if (!dragCard || !canEditProject || isMovePending) {
+    if (!dragCard || !canWriteProject || isMovePending) {
       return;
     }
 

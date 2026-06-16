@@ -15,7 +15,7 @@ import type { BoardCard, BoardColumn as BoardColumnType } from "../../types/api"
 import { TaskCardAvatar } from "./task-card-avatar";
 
 type BoardColumnProps = {
-  canEditProject: boolean;
+  canWriteProject: boolean;
   column: BoardColumnType;
   columnCount: number;
   dragCardId?: string | null;
@@ -65,7 +65,7 @@ type BoardColumnProps = {
 };
 
 export function BoardColumn({
-  canEditProject,
+  canWriteProject,
   column,
   columnCount,
   dragCardId,
@@ -148,23 +148,23 @@ export function BoardColumn({
         ) : (
           <span
             className={
-              canEditProject
+              canWriteProject
                 ? "board-column-title board-column-title-editable"
                 : "board-column-title"
             }
             onDoubleClick={() => {
-              if (canEditProject) {
+              if (canWriteProject) {
                 onStartEditingColumn(column);
               }
             }}
-            title={canEditProject ? "Duplo clique para renomear" : ""}
+            title={canWriteProject ? "Duplo clique para renomear" : ""}
           >
             {column.title}
           </span>
         )}
 
         <div className="board-column-header-actions">
-          {showColumnManagement && canEditProject && columnCount > 1 ? (
+          {showColumnManagement && canWriteProject && columnCount > 1 ? (
             <>
               {column.position > 0 ? (
                 <button
@@ -194,13 +194,13 @@ export function BoardColumn({
           <span className="board-column-count">{column.cards.length}</span>
           <button
             className="text-button"
-            disabled={!canEditProject}
+            disabled={!canWriteProject}
             onClick={() => onOpenCreateCard(column.id)}
             type="button"
           >
             + Card
           </button>
-          {canEditProject ? (
+          {canWriteProject ? (
             <button
               className="text-button text-button-danger"
               disabled={isColumnActionPending}
@@ -238,7 +238,7 @@ export function BoardColumn({
                       : "task-card task-card-button"
                   }${isCompletedColumn ? " task-card-completed" : ""}`}
                   data-board-card-id={card.id}
-                  draggable={canEditProject}
+                  draggable={canWriteProject}
                   onClick={() => onOpenCard(card.id)}
                   onDragEnd={onCardDragEnd}
                   onDragStart={() => onStartCardDrag(card.id, column.id, index)}
@@ -254,7 +254,7 @@ export function BoardColumn({
                           {formatShortDate(card.dueDate)}
                         </span>
                       ) : null}
-                      {canEditProject ? (
+                      {canWriteProject ? (
                         <span
                           aria-label="Renomear card"
                           className="task-card-rename"
@@ -307,4 +307,3 @@ export function BoardColumn({
     </article>
   );
 }
-

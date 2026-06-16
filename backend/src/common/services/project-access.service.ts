@@ -13,9 +13,9 @@ import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 export class ProjectAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async ensureProjectAccess(user: AuthenticatedUser, projectId: string) {
+  async ensureProjectReadAccess(user: AuthenticatedUser, projectId: string) {
     const project = await this.prisma.project.findFirst({
-      where: this.buildProjectAccessWhere(user, projectId),
+      where: this.buildProjectReadWhere(user, projectId),
       include: {
         owner: {
           select: {
@@ -79,7 +79,7 @@ export class ProjectAccessService {
 
   async ensureProjectWriteAccess(user: AuthenticatedUser, projectId: string) {
     const project = await this.prisma.project.findFirst({
-      where: this.buildProjectAccessWhere(user, projectId),
+      where: this.buildProjectReadWhere(user, projectId),
       select: {
         ownerId: true,
         members: {
@@ -119,7 +119,7 @@ export class ProjectAccessService {
 
   async ensureProjectManageAccess(user: AuthenticatedUser, projectId: string) {
     const project = await this.prisma.project.findFirst({
-      where: this.buildProjectAccessWhere(user, projectId),
+      where: this.buildProjectReadWhere(user, projectId),
       select: {
         ownerId: true,
         members: {
@@ -157,7 +157,7 @@ export class ProjectAccessService {
 
   async ensureProjectDeleteAccess(user: AuthenticatedUser, projectId: string) {
     const project = await this.prisma.project.findFirst({
-      where: this.buildProjectAccessWhere(user, projectId),
+      where: this.buildProjectReadWhere(user, projectId),
       select: {
         ownerId: true,
         members: {
@@ -222,11 +222,11 @@ export class ProjectAccessService {
     }
   }
 
-  buildProjectAccessWhere(
+  buildProjectReadWhere(
     user: AuthenticatedUser,
     projectId?: string,
   ): Prisma.ProjectWhereInput {
-    const restrictedWhere: Prisma.ProjectWhereInput = {
+    const readableWhere: Prisma.ProjectWhereInput = {
       OR: [
         { ownerId: user.id },
         {
@@ -245,11 +245,11 @@ export class ProjectAccessService {
     };
 
     if (!projectId) {
-      return restrictedWhere;
+      return readableWhere;
     }
 
     return {
-      AND: [{ id: projectId }, restrictedWhere],
+      AND: [{ id: projectId }, readableWhere],
     };
   }
 

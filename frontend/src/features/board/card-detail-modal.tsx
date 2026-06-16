@@ -22,7 +22,7 @@ type ChecklistReference = {
 };
 
 type CardDetailModalProps = {
-  canEditProject: boolean;
+  canWriteProject: boolean;
   card?: CardDetail;
   cardDescriptionErrorMessage?: string | null;
   cardDescriptions: CardComment[];
@@ -62,7 +62,7 @@ type CardDetailModalProps = {
 };
 
 export function CardDetailModal({
-  canEditProject,
+  canWriteProject,
   card,
   cardDescriptionErrorMessage,
   cardDescriptions,
@@ -106,7 +106,7 @@ export function CardDetailModal({
           </button>
           <button
             className="secondary-button button-danger"
-            disabled={isArchivePending || !card || !canEditProject}
+            disabled={isArchivePending || !card || !canWriteProject}
             onClick={onArchive}
             type="button"
           >
@@ -114,7 +114,7 @@ export function CardDetailModal({
           </button>
           <button
             className="primary-button"
-            disabled={isSavePending || !card || !canEditProject}
+            disabled={isSavePending || !card || !canWriteProject}
             form="edit-card-form"
             type="submit"
           >
@@ -160,7 +160,7 @@ export function CardDetailModal({
               </label>
               <input
                 className="field-input"
-                disabled={!canEditProject}
+                disabled={!canWriteProject}
                 id="edit-card-title"
                 minLength={2}
                 onChange={(event) =>
@@ -185,7 +185,7 @@ export function CardDetailModal({
               isBusy={isCommentsBusy}
               isLoading={isCommentsLoading}
               placeholder="Escreva uma descricao, observacao ou atualizacao..."
-              readOnly={!canEditProject}
+              readOnly={!canWriteProject}
               readOnlyCopy="Seu perfil neste projeto e somente leitura. As descricoes seguem visiveis, mas sem novos registros."
               submitLabel="Registrar"
               title="Descricao"
@@ -202,7 +202,7 @@ export function CardDetailModal({
                 </label>
                 <select
                   className="field-input"
-                  disabled={!canEditProject}
+                  disabled={!canWriteProject}
                   id="edit-card-assignee"
                   onChange={(event) =>
                     onChangeForm({
@@ -228,7 +228,7 @@ export function CardDetailModal({
                 </label>
                 <select
                   className="field-input"
-                  disabled={!canEditProject}
+                  disabled={!canWriteProject}
                   id="edit-card-priority"
                   onChange={(event) =>
                     onChangeForm({
@@ -252,7 +252,7 @@ export function CardDetailModal({
                 </label>
                 <input
                   className="field-input"
-                  disabled={!canEditProject}
+                  disabled={!canWriteProject}
                   id="edit-card-due-date"
                   onChange={(event) =>
                     onChangeForm({
@@ -274,7 +274,7 @@ export function CardDetailModal({
             isBusy={isChecklistBusy}
             isLoading={isChecklistLoading}
             items={checklistItems}
-            readOnly={!canEditProject}
+            readOnly={!canWriteProject}
             onCreate={onChecklistCreate}
             onDelete={onChecklistDelete}
             onMove={onChecklistMove}
