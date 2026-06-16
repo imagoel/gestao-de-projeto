@@ -1,18 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <path
-    fill="#f5c65b"
-    d="M8 18a6 6 0 0 1 6-6h12l5 6h19a6 6 0 0 1 6 6v4H8z"
+    fill="#f8d982"
+    stroke="#111827"
+    stroke-linejoin="round"
+    stroke-width="4"
+    d="M7 19a7 7 0 0 1 7-7h13l6 7h17a7 7 0 0 1 7 7v5H7z"
   />
   <path
     fill="#e5ac36"
-    d="M8 26h48v22a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6z"
+    stroke="#111827"
+    stroke-linejoin="round"
+    stroke-width="4"
+    d="M7 27h50v21a7 7 0 0 1-7 7H14a7 7 0 0 1-7-7z"
   />
-  <path
-    fill="#f8d982"
-    d="M12 22a4 4 0 0 1 4-4h12l4 4z"
-  />
-  <path
-    fill="#d19425"
-    d="M8 26h48v4H8z"
-  />
+  <path fill="#f5c65b" d="M11 31h42v16a4 4 0 0 1-4 4H15a4 4 0 0 1-4-4z" />
 </svg>
