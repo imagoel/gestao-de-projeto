@@ -201,13 +201,6 @@ export function ProjectFolderSection({
               Editar
             </button>
           ) : null}
-          <button
-            className="text-button"
-            onClick={() => onOpenBoard(project.id)}
-            type="button"
-          >
-            Abrir quadro
-          </button>
         </div>
       </article>
     );

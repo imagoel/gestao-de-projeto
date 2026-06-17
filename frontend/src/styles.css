@@ -293,12 +293,6 @@ textarea {
   font-size: 0.9rem;
 }
 
-.panel-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 .badge-row {
   display: flex;
   gap: 8px;
@@ -370,15 +364,53 @@ textarea {
   color: #6f6b63;
 }
 
-.inline-edit-button {
-  padding: 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
 .info-value {
   font-size: 0.98rem;
   color: #1f1d1a;
+}
+
+.project-detail-actions {
+  display: grid;
+  gap: 8px;
+  max-width: 280px;
+}
+
+.project-detail-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #d4d1c7;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f1d1a;
+  cursor: pointer;
+  font-weight: 600;
+  text-align: left;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.project-detail-action-button:hover {
+  border-color: #a4afbc;
+  background: #f8faf7;
+}
+
+.project-detail-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.project-detail-action-button-danger {
+  color: #8c2f25;
+}
+
+.project-action-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 
 .member-list {

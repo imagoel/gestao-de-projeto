@@ -90,12 +90,6 @@ export function ProjectCard({
             Editar
           </button>
         ) : null}
-        <Link
-          className="secondary-button project-card-board-link"
-          to={`/projetos/${project.id}/quadro`}
-        >
-          Abrir quadro
-        </Link>
       </div>
     </article>
   );

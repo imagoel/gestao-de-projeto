@@ -392,13 +392,9 @@
 
 .project-card-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 12px;
-}
-
-.project-card-board-link {
-  padding: 8px 12px;
 }
 
 .project-card-title {

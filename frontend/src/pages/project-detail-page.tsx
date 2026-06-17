@@ -17,6 +17,50 @@ import { RenameProjectModal } from '../features/projects/project-modals';
 import { ApiError, api } from '../services/api';
 import type { ProjectRole } from '../types/api';
 
+type ProjectActionIconName = 'rename' | 'description' | 'delete';
+
+function ProjectActionIcon({ name }: { name: ProjectActionIconName }) {
+  const paths: Record<ProjectActionIconName, string[]> = {
+    rename: [
+      'M4 16.5V20h3.5L18.2 9.3l-3.5-3.5L4 16.5Z',
+      'M13.5 7l3.5 3.5',
+    ],
+    description: [
+      'M6 3.5h8l4 4V20H6V3.5Z',
+      'M14 3.5V8h4',
+      'M8.5 12h7',
+      'M8.5 15.5h5',
+    ],
+    delete: [
+      'M5 7h14',
+      'M9 7V5h6v2',
+      'M8 7l1 13h6l1-13',
+      'M11 10.5v6',
+      'M14 10.5v6',
+    ],
+  };
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="project-action-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      {paths[name].map((path) => (
+        <path
+          d={path}
+          key={path}
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+      ))}
+    </svg>
+  );
+}
+
 export function ProjectDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -194,34 +238,6 @@ export function ProjectDetailPage() {
       <Link className="secondary-button" to="/projetos">
         Voltar aos projetos
       </Link>
-      {canManageProject ? (
-        <button
-          className="secondary-button"
-          onClick={openEditNameModal}
-          type="button"
-        >
-          Renomear projeto
-        </button>
-      ) : null}
-      {canManageProject ? (
-        <button
-          className="secondary-button"
-          onClick={openEditDescriptionModal}
-          type="button"
-        >
-          Editar descricao
-        </button>
-      ) : null}
-      {canDeleteProject ? (
-        <button
-          className="button-danger"
-          disabled={deleteProjectMutation.isPending}
-          onClick={() => void handleDeleteProject()}
-          type="button"
-        >
-          {deleteProjectMutation.isPending ? 'Apagando...' : 'Apagar projeto'}
-        </button>
-      ) : null}
       <Link className="primary-button" to={`/projetos/${projectId}/quadro`}>
         Abrir quadro
       </Link>
@@ -442,18 +458,7 @@ export function ProjectDetailPage() {
         <div className="detail-grid">
           <section className="panel info-list">
             <div className="info-row">
-              <div className="info-label-row">
-                <span className="info-label">Descricao</span>
-                {canManageProject ? (
-                  <button
-                    className="text-button inline-edit-button"
-                    onClick={openEditDescriptionModal}
-                    type="button"
-                  >
-                    Editar
-                  </button>
-                ) : null}
-              </div>
+              <span className="info-label">Descricao</span>
               <span className="info-value">
                 {project.description || 'Projeto sem descricao cadastrada.'}
               </span>
@@ -512,45 +517,44 @@ export function ProjectDetailPage() {
           </section>
 
           <aside className="panel info-list">
-            <div className="info-row">
-              <span className="info-label">Acoes rapidas</span>
-              <div className="panel-actions">
-                <Link className="primary-button" to={`/projetos/${projectId}/quadro`}>
-                  Abrir quadro
-                </Link>
-                <Link className="secondary-button" to="/projetos">
-                  Voltar
-                </Link>
-                {canManageProject ? (
-                  <button
-                    className="secondary-button"
-                    onClick={openEditNameModal}
-                    type="button"
-                  >
-                    Renomear projeto
-                  </button>
-                ) : null}
-                {canManageProject ? (
-                  <button
-                    className="secondary-button"
-                    onClick={openEditDescriptionModal}
-                    type="button"
-                  >
-                    Editar descricao
-                  </button>
-                ) : null}
-                {canDeleteProject ? (
-                  <button
-                    className="button-danger"
-                    disabled={deleteProjectMutation.isPending}
-                    onClick={() => void handleDeleteProject()}
-                    type="button"
-                  >
-                    {deleteProjectMutation.isPending ? 'Apagando...' : 'Apagar projeto'}
-                  </button>
-                ) : null}
+            {canManageProject || canDeleteProject ? (
+              <div className="info-row">
+                <span className="info-label">Acoes do projeto</span>
+                <div className="project-detail-actions">
+                  {canManageProject ? (
+                    <button
+                      className="project-detail-action-button"
+                      onClick={openEditNameModal}
+                      type="button"
+                    >
+                      <ProjectActionIcon name="rename" />
+                      Renomear projeto
+                    </button>
+                  ) : null}
+                  {canManageProject ? (
+                    <button
+                      className="project-detail-action-button"
+                      onClick={openEditDescriptionModal}
+                      type="button"
+                    >
+                      <ProjectActionIcon name="description" />
+                      Editar descricao
+                    </button>
+                  ) : null}
+                  {canDeleteProject ? (
+                    <button
+                      className="project-detail-action-button project-detail-action-button-danger"
+                      disabled={deleteProjectMutation.isPending}
+                      onClick={() => void handleDeleteProject()}
+                      type="button"
+                    >
+                      <ProjectActionIcon name="delete" />
+                      {deleteProjectMutation.isPending ? 'Apagando...' : 'Apagar projeto'}
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            ) : null}
             <div className="info-row">
               <span className="info-label">Status</span>
               <span className="info-value">
