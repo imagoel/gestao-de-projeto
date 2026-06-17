@@ -1,4 +1,4 @@
-import { type DragEvent } from 'react';
+import { useState, type DragEvent } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -64,6 +64,7 @@ export function ProjectFolderSection({
   projects,
   subfolders,
 }: ProjectFolderSectionProps) {
+  const [closedSubfolderIds, setClosedSubfolderIds] = useState<string[]>([]);
   const totalNestedProjects =
     projects.length +
     subfolders.reduce((total, group) => total + group.projects.length, 0);
@@ -118,6 +119,14 @@ export function ProjectFolderSection({
     if (!event.currentTarget.contains(event.relatedTarget as Node)) {
       onClearDragOver();
     }
+  }
+
+  function toggleSubfolder(folderId: string) {
+    setClosedSubfolderIds((current) =>
+      current.includes(folderId)
+        ? current.filter((currentFolderId) => currentFolderId !== folderId)
+        : [...current, folderId],
+    );
   }
 
   function renderLooseProject(project: Project) {
@@ -207,6 +216,7 @@ export function ProjectFolderSection({
   function renderSubfolder(group: SubfolderGroup) {
     const canManageSubfolder = canManageFolder(group.folder);
     const isSubfolderDragOver = dragOverKey === group.folder.id;
+    const isSubfolderOpen = !closedSubfolderIds.includes(group.folder.id);
 
     return (
       <section
@@ -217,18 +227,26 @@ export function ProjectFolderSection({
         onDrop={(event) => handleDrop(event, group.folder.id)}
       >
         <header className="subfolder-header">
-          <div className="subfolder-title">
-            <img
-              alt=""
-              aria-hidden="true"
-              className="subfolder-icon"
-              src={folderSubfolderIcon}
-            />
-            <strong>{group.folder.name}</strong>
-            <span className="folder-count">
-              {group.projects.length} projeto{group.projects.length === 1 ? '' : 's'}
+          <button
+            aria-expanded={isSubfolderOpen}
+            className="subfolder-toggle"
+            onClick={() => toggleSubfolder(group.folder.id)}
+            type="button"
+          >
+            <span className="folder-caret">{isSubfolderOpen ? '▾' : '▸'}</span>
+            <span className="subfolder-title">
+              <img
+                alt=""
+                aria-hidden="true"
+                className="subfolder-icon"
+                src={folderSubfolderIcon}
+              />
+              <strong>{group.folder.name}</strong>
+              <span className="folder-count">
+                {group.projects.length} projeto{group.projects.length === 1 ? '' : 's'}
+              </span>
             </span>
-          </div>
+          </button>
           {canManageSubfolder ? (
             <div className="folder-actions">
               <button className="text-button" onClick={() => onRename(group.folder)} type="button">
@@ -246,26 +264,28 @@ export function ProjectFolderSection({
           ) : null}
         </header>
 
-        {group.projects.length > 0 ? (
-          <div className="subfolder-project-grid" role="list">
-            {group.projects.map((project) => (
-              <ProjectCard
-                canMove={canMoveProject(project)}
-                canRename={canMoveProject(project)}
-                key={project.id}
-                onDragEnd={onProjectDragEnd}
-                onDragStart={onProjectDragStart}
-                onOpenBoard={onOpenBoard}
-                onRename={onRenameProject}
-                project={project}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="field-helper folder-empty">
-            {isAdmin ? 'Subpasta vazia. Arraste projetos ate aqui.' : 'Subpasta vazia.'}
-          </p>
-        )}
+        {isSubfolderOpen ? (
+          group.projects.length > 0 ? (
+            <div className="subfolder-project-grid" role="list">
+              {group.projects.map((project) => (
+                <ProjectCard
+                  canMove={canMoveProject(project)}
+                  canRename={canMoveProject(project)}
+                  key={project.id}
+                  onDragEnd={onProjectDragEnd}
+                  onDragStart={onProjectDragStart}
+                  onOpenBoard={onOpenBoard}
+                  onRename={onRenameProject}
+                  project={project}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="field-helper folder-empty">
+              {isAdmin ? 'Subpasta vazia. Arraste projetos ate aqui.' : 'Subpasta vazia.'}
+            </p>
+          )
+        ) : null}
       </section>
     );
   }
