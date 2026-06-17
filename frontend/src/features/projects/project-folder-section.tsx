@@ -6,7 +6,10 @@ import {
   formatShortDate,
   getProjectStatusTone,
 } from '../../app/formatters';
-import type { Project, ProjectFolder } from '../../types/api';
+import folderOpenIcon from '../../assets/folder-open.png';
+import folderProjectIcon from '../../assets/folder-project.png';
+import folderSubfolderIcon from '../../assets/folder-subfolder.png';
+import type { ApiUser, Project, ProjectFolder } from '../../types/api';
 import { ProjectCard } from './project-card';
 
 type SubfolderGroup = {
@@ -75,6 +78,27 @@ export function ProjectFolderSection({
     return `${totalNestedProjects} projeto${totalNestedProjects === 1 ? '' : 's'}`;
   }
 
+  function getInitials(name?: string | null) {
+    if (!name) return '?';
+
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    const first = parts[0]?.[0] ?? '';
+    const second = parts.length > 1 ? parts[parts.length - 1]?.[0] : '';
+    return `${first}${second}`.toUpperCase();
+  }
+
+  function renderAvatar(user: ApiUser) {
+    return (
+      <span className="project-horizontal-avatar" key={user.id} title={user.name}>
+        {user.avatarUrl ? (
+          <img alt="" src={user.avatarUrl} />
+        ) : (
+          <span>{getInitials(user.name)}</span>
+        )}
+      </span>
+    );
+  }
+
   function handleDrop(event: DragEvent<HTMLElement>, targetFolderId: string) {
     event.preventDefault();
     onClearDragOver();
@@ -96,14 +120,18 @@ export function ProjectFolderSection({
     }
   }
 
-  function renderProjectListItem(project: Project) {
+  function renderLooseProject(project: Project) {
     const canMove = canMoveProject(project);
+    const participantUsers = project.members.map((member) => member.user);
+    const visibleParticipants = participantUsers.slice(0, 2);
+    const extraParticipants = participantUsers.length - visibleParticipants.length;
 
     return (
       <article
-        className="project-compact-row"
+        className="project-horizontal-card"
         draggable={canMove}
         key={project.id}
+        role="listitem"
         onDragEnd={onProjectDragEnd}
         onDragStart={(event) => {
           if (!canMove) {
@@ -115,18 +143,43 @@ export function ProjectFolderSection({
         }}
       >
         <button
-          className="project-compact-main"
+          className="project-horizontal-main"
           onClick={() => onOpenBoard(project.id)}
           type="button"
         >
-          <span className={`badge ${getProjectStatusTone(project.status)}`}>
-            {formatProjectStatus(project.status)}
-          </span>
-          <strong>{project.name}</strong>
-          <span>{project.owner.name}</span>
-          <span>{formatShortDate(project.deadline)}</span>
+          <div className="project-horizontal-content">
+            <div className="project-horizontal-title-row">
+              <span className={`badge ${getProjectStatusTone(project.status)}`}>
+                {formatProjectStatus(project.status)}
+              </span>
+              <strong title={project.name}>{project.name}</strong>
+            </div>
+            {project.description ? (
+              <p className="project-horizontal-copy" title={project.description}>
+                {project.description}
+              </p>
+            ) : null}
+            <div className="project-horizontal-meta">
+              <span>{project.owner.name}</span>
+              <span>{formatShortDate(project.deadline)}</span>
+              <span>
+                {project.members.length} participante
+                {project.members.length === 1 ? '' : 's'}
+              </span>
+            </div>
+          </div>
+          {participantUsers.length > 0 ? (
+            <div className="project-horizontal-avatars" aria-hidden="true">
+              {visibleParticipants.map((participant) => renderAvatar(participant))}
+              {extraParticipants > 0 ? (
+                <span className="project-horizontal-avatar project-horizontal-avatar-extra">
+                  +{extraParticipants}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </button>
-        <div className="project-compact-actions">
+        <div className="project-horizontal-actions">
           <Link className="text-button" to={`/projetos/${project.id}`}>
             Detalhes
           </Link>
@@ -139,6 +192,13 @@ export function ProjectFolderSection({
               Editar
             </button>
           ) : null}
+          <button
+            className="text-button"
+            onClick={() => onOpenBoard(project.id)}
+            type="button"
+          >
+            Abrir quadro
+          </button>
         </div>
       </article>
     );
@@ -158,7 +218,12 @@ export function ProjectFolderSection({
       >
         <header className="subfolder-header">
           <div className="subfolder-title">
-            <span className="subfolder-icon" aria-hidden="true" />
+            <img
+              alt=""
+              aria-hidden="true"
+              className="subfolder-icon"
+              src={folderSubfolderIcon}
+            />
             <strong>{group.folder.name}</strong>
             <span className="folder-count">
               {group.projects.length} projeto{group.projects.length === 1 ? '' : 's'}
@@ -221,9 +286,12 @@ export function ProjectFolderSection({
         >
           <span className="folder-caret">{isOpen ? '▾' : '▸'}</span>
           <span className="folder-title">
-            <span className="folder-emoji" aria-hidden="true">
-              📁
-            </span>
+            <img
+              alt=""
+              aria-hidden="true"
+              className="folder-icon"
+              src={isOpen ? folderOpenIcon : folderProjectIcon}
+            />
             {folder.name}
           </span>
           <span className="folder-count">{formatCount()}</span>
@@ -264,8 +332,8 @@ export function ProjectFolderSection({
                     {projects.length} projeto{projects.length === 1 ? '' : 's'}
                   </span>
                 </header>
-                <div className="project-compact-list" role="list">
-                  {projects.map((project) => renderProjectListItem(project))}
+                <div className="project-horizontal-list" role="list">
+                  {projects.map((project) => renderLooseProject(project))}
                 </div>
               </section>
             ) : null}
