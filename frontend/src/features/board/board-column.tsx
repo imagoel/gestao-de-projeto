@@ -1,8 +1,9 @@
-import type {
-  DragEvent,
-  FormEvent,
-  UIEvent,
-  WheelEvent,
+import {
+  useState,
+  type DragEvent,
+  type FormEvent,
+  type UIEvent,
+  type WheelEvent,
 } from "react";
 
 import {
@@ -11,6 +12,7 @@ import {
   getDueDateTone,
   getPriorityTone,
 } from "../../app/formatters";
+import { Modal } from "../../components/modal";
 import type { BoardCard, BoardColumn as BoardColumnType } from "../../types/api";
 import { TaskCardAvatar } from "./task-card-avatar";
 
@@ -95,6 +97,9 @@ export function BoardColumn({
   onCardDragEnd,
   registerColumnBody,
 }: BoardColumnProps) {
+  const [renamingCard, setRenamingCard] = useState<BoardCard | null>(null);
+  const [renameCardTitle, setRenameCardTitle] = useState("");
+
   function handleRenameColumnSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -104,15 +109,34 @@ export function BoardColumn({
     }
   }
 
-  function handleRenameCard(card: BoardCard) {
-    const next = window.prompt("Novo nome do card:", card.title);
-    const trimmed = next?.trim();
+  function openRenameCardModal(card: BoardCard) {
+    setRenamingCard(card);
+    setRenameCardTitle(card.title);
+  }
 
-    if (!trimmed || trimmed === card.title) {
+  function closeRenameCardModal() {
+    setRenamingCard(null);
+    setRenameCardTitle("");
+  }
+
+  function handleRenameCardSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!renamingCard) {
       return;
     }
 
-    onRenameCard(card, trimmed);
+    const trimmed = renameCardTitle.trim();
+
+    if (!trimmed) {
+      return;
+    }
+
+    if (trimmed !== renamingCard.title) {
+      onRenameCard(renamingCard, trimmed);
+    }
+
+    closeRenameCardModal();
   }
 
   return (
@@ -260,9 +284,17 @@ export function BoardColumn({
                           className="task-card-rename"
                           onClick={(event) => {
                             event.stopPropagation();
-                            handleRenameCard(card);
+                            openRenameCardModal(card);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openRenameCardModal(card);
+                            }
                           }}
                           role="button"
+                          tabIndex={0}
                           title="Renomear card"
                         >
                           ✎
@@ -304,6 +336,55 @@ export function BoardColumn({
           </div>
         )}
       </div>
+
+      <Modal
+        footer={
+          <>
+            <button
+              className="secondary-button"
+              onClick={closeRenameCardModal}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="primary-button"
+              form={`rename-card-form-${column.id}`}
+              type="submit"
+            >
+              Salvar
+            </button>
+          </>
+        }
+        onClose={closeRenameCardModal}
+        open={Boolean(renamingCard)}
+        title="Renomear card"
+      >
+        <form
+          className="form-grid"
+          id={`rename-card-form-${column.id}`}
+          onSubmit={handleRenameCardSubmit}
+        >
+          <div className="field-group">
+            <label
+              className="field-label"
+              htmlFor={`rename-card-title-${column.id}`}
+            >
+              Novo nome do card
+            </label>
+            <input
+              autoFocus
+              className="field-input"
+              id={`rename-card-title-${column.id}`}
+              minLength={2}
+              onChange={(event) => setRenameCardTitle(event.target.value)}
+              required
+              type="text"
+              value={renameCardTitle}
+            />
+          </div>
+        </form>
+      </Modal>
     </article>
   );
 }

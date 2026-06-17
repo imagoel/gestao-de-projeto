@@ -258,7 +258,24 @@
 }
 
 .task-card-rename {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   margin-left: 2px;
+  border-radius: 999px;
+  color: #4d5a66;
+  cursor: pointer;
+  line-height: 1;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.task-card-rename:hover,
+.task-card-rename:focus-visible {
+  background: #e7eef7;
+  color: #12477c;
+  outline: none;
 }
 
 .task-card-completed .task-card-rename {

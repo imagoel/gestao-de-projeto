@@ -1,5 +1,6 @@
 import { useMemo, useState, type DragEvent } from "react";
 
+import { ConfirmModal } from "../../components/confirm-modal";
 import type { ChecklistItem } from "../../types/api";
 
 type CardChecklistSectionProps = {
@@ -32,6 +33,8 @@ export function CardChecklistSection({
   const [editingTitle, setEditingTitle] = useState("");
   const [dragItemId, setDragItemId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<number | null>(null);
+  const [itemPendingDelete, setItemPendingDelete] =
+    useState<ChecklistItem | null>(null);
 
   const completedCount = useMemo(
     () => items.filter((item) => item.done).length,
@@ -254,17 +257,7 @@ export function CardChecklistSection({
                     <button
                       className="text-button text-button-danger"
                       disabled={isBusy || readOnly}
-                      onClick={() => {
-                        const shouldDelete = window.confirm(
-                          `Excluir o item "${item.title}" do checklist?`,
-                        );
-
-                        if (!shouldDelete) {
-                          return;
-                        }
-
-                        void onDelete(item);
-                      }}
+                      onClick={() => setItemPendingDelete(item)}
                       type="button"
                     >
                       Excluir
@@ -319,6 +312,27 @@ export function CardChecklistSection({
           Adicionar
         </button>
       </div>
+
+      <ConfirmModal
+        confirmLabel="Excluir item"
+        description={
+          itemPendingDelete
+            ? `Excluir o item "${itemPendingDelete.title}" do checklist?`
+            : "Excluir este item do checklist?"
+        }
+        isConfirming={isBusy}
+        onClose={() => setItemPendingDelete(null)}
+        onConfirm={async () => {
+          if (!itemPendingDelete) {
+            return;
+          }
+
+          await onDelete(itemPendingDelete);
+          setItemPendingDelete(null);
+        }}
+        open={Boolean(itemPendingDelete)}
+        title="Excluir checklist"
+      />
     </section>
   );
 }

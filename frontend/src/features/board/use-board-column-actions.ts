@@ -102,23 +102,12 @@ export function useBoardColumnActions({
     void renameColumnMutation.mutateAsync({ columnId, title });
   }
 
-  function handleDeleteColumn(column: BoardColumn) {
-    if (
-      window.confirm(
-        `Remover a coluna "${column.title}"? Cards ativos impedem a remocao.`,
-      )
-    ) {
-      void deleteColumnMutation.mutateAsync(column.id);
-    }
-  }
-
   return {
     addColumnMutation,
     columnError,
     deleteColumnMutation,
     editingColumnId,
     editingColumnTitle,
-    handleDeleteColumn,
     handleRenameColumn,
     handleStartEditingColumn,
     isAddColumnOpen,

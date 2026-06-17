@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../app/auth-provider';
 import { AppShell } from '../components/app-shell';
+import { ConfirmModal } from '../components/confirm-modal';
 import { StatusState } from '../components/status-state';
 import {
   CreateFolderModal,
@@ -75,6 +76,8 @@ export function ProjectsPage() {
   const [renamingProject, setRenamingProject] = useState<Project | null>(null);
   const [renameProjectValue, setRenameProjectValue] = useState('');
   const [renameProjectError, setRenameProjectError] = useState<string | null>(null);
+  const [folderPendingDelete, setFolderPendingDelete] =
+    useState<ProjectFolder | null>(null);
 
   const renameFolderMutation = useMutation({
     mutationFn: (payload: { folderId: string; name: string }) =>
@@ -346,13 +349,7 @@ export function ProjectsPage() {
   }
 
   function handleDeleteFolder(folder: ProjectFolder) {
-    if (
-      window.confirm(
-        `Apagar a pasta "${folder.name}"? Apenas pastas vazias podem ser apagadas.`,
-      )
-    ) {
-      void deleteFolderMutation.mutateAsync(folder.id);
-    }
+    setFolderPendingDelete(folder);
   }
 
   const action = (
@@ -515,6 +512,27 @@ export function ProjectsPage() {
         onValueChange={setRenameProjectValue}
         project={renamingProject}
         value={renameProjectValue}
+      />
+
+      <ConfirmModal
+        confirmLabel="Apagar pasta"
+        description={
+          folderPendingDelete
+            ? `Apagar a pasta "${folderPendingDelete.name}"? Apenas pastas vazias podem ser apagadas.`
+            : 'Apagar esta pasta?'
+        }
+        isConfirming={deleteFolderMutation.isPending}
+        onClose={() => setFolderPendingDelete(null)}
+        onConfirm={async () => {
+          if (!folderPendingDelete) {
+            return;
+          }
+
+          await deleteFolderMutation.mutateAsync(folderPendingDelete.id);
+          setFolderPendingDelete(null);
+        }}
+        open={Boolean(folderPendingDelete)}
+        title="Apagar pasta"
       />
 
       <CreateFolderModal

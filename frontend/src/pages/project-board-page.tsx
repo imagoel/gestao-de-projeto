@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../app/auth-provider";
 import { toDateInputValue } from "../app/formatters";
 import { AppShell } from "../components/app-shell";
+import { ConfirmModal } from "../components/confirm-modal";
 import { StatusState } from "../components/status-state";
 import { ArchivedCardsModal } from "../features/board/archived-cards-modal";
 import {
@@ -30,6 +31,7 @@ import { useBoardColumnActions } from "../features/board/use-board-column-action
 import { useBoardColumnScroll } from "../features/board/use-board-column-scroll";
 import { useBoardDescriptionActions } from "../features/board/use-board-description-actions";
 import { useProjectBoardData } from "../features/board/use-project-board-data";
+import type { BoardColumn as BoardColumnType } from "../types/api";
 
 export function ProjectBoardPage() {
   const { token, user } = useAuth();
@@ -55,6 +57,8 @@ function ProjectBoardPageContent() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [boardActionError, setBoardActionError] = useState<string | null>(null);
+  const [columnPendingDelete, setColumnPendingDelete] =
+    useState<BoardColumnType | null>(null);
 
   const {
     archivedCardsQuery,
@@ -81,7 +85,6 @@ function ProjectBoardPageContent() {
     deleteColumnMutation,
     editingColumnId,
     editingColumnTitle,
-    handleDeleteColumn,
     handleRenameColumn,
     handleStartEditingColumn,
     isAddColumnOpen,
@@ -353,7 +356,7 @@ function ProjectBoardPageContent() {
                 onColumnDrop={handleColumnDrop}
                 onColumnScroll={handleColumnScroll}
                 onColumnWheel={handleColumnWheel}
-                onDeleteColumn={handleDeleteColumn}
+                onDeleteColumn={setColumnPendingDelete}
                 onDrop={handleDrop}
                 onDropZoneDragOver={handleDropTargetDragOver}
                 onOpenCard={openCardDetails}
@@ -387,6 +390,27 @@ function ProjectBoardPageContent() {
         onCreate={(title) => void addColumnMutation.mutateAsync(title)}
         open={isAddColumnOpen}
         title={newColumnTitle}
+      />
+
+      <ConfirmModal
+        confirmLabel="Remover coluna"
+        description={
+          columnPendingDelete
+            ? `Remover a coluna "${columnPendingDelete.title}"? Cards ativos impedem a remocao.`
+            : "Remover esta coluna?"
+        }
+        isConfirming={deleteColumnMutation.isPending}
+        onClose={() => setColumnPendingDelete(null)}
+        onConfirm={async () => {
+          if (!columnPendingDelete) {
+            return;
+          }
+
+          await deleteColumnMutation.mutateAsync(columnPendingDelete.id);
+          setColumnPendingDelete(null);
+        }}
+        open={Boolean(columnPendingDelete)}
+        title="Remover coluna"
       />
 
       <ArchivedCardsModal

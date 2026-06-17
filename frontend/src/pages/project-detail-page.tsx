@@ -10,6 +10,7 @@ import {
   getProjectStatusTone,
 } from '../app/formatters';
 import { AppShell } from '../components/app-shell';
+import { ConfirmModal } from '../components/confirm-modal';
 import { Modal } from '../components/modal';
 import { StatusState } from '../components/status-state';
 import { RenameProjectModal } from '../features/projects/project-modals';
@@ -31,6 +32,12 @@ export function ProjectDetailPage() {
   const [addMemberUserId, setAddMemberUserId] = useState('');
   const [addMemberRole, setAddMemberRole] = useState<ProjectRole>('MEMBER');
   const [memberError, setMemberError] = useState<string | null>(null);
+  const [isDeleteProjectConfirmOpen, setIsDeleteProjectConfirmOpen] =
+    useState(false);
+  const [memberRemovalTarget, setMemberRemovalTarget] = useState<{
+    name: string;
+    userId: string;
+  } | null>(null);
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -146,16 +153,16 @@ export function ProjectDetailPage() {
         currentProjectMember?.role === 'MANAGER'),
   );
 
-  async function handleDeleteProject() {
+  function handleDeleteProject() {
     if (!project) {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Deseja apagar o projeto "${project.name}"? Esta acao remove o board e os cards vinculados a ele.`,
-    );
+    setIsDeleteProjectConfirmOpen(true);
+  }
 
-    if (!confirmed) {
+  async function confirmDeleteProject() {
+    if (!project) {
       return;
     }
 
@@ -264,6 +271,41 @@ export function ProjectDetailPage() {
           }
         />
       ) : null}
+
+      <ConfirmModal
+        confirmLabel="Apagar projeto"
+        description={
+          project
+            ? `Deseja apagar o projeto "${project.name}"? Esta acao remove o board e os cards vinculados a ele.`
+            : 'Deseja apagar este projeto?'
+        }
+        isConfirming={deleteProjectMutation.isPending}
+        onClose={() => setIsDeleteProjectConfirmOpen(false)}
+        onConfirm={confirmDeleteProject}
+        open={isDeleteProjectConfirmOpen}
+        title="Apagar projeto"
+      />
+
+      <ConfirmModal
+        confirmLabel="Remover participante"
+        description={
+          memberRemovalTarget
+            ? `Remover ${memberRemovalTarget.name} do projeto?`
+            : 'Remover participante do projeto?'
+        }
+        isConfirming={removeMemberMutation.isPending}
+        onClose={() => setMemberRemovalTarget(null)}
+        onConfirm={async () => {
+          if (!memberRemovalTarget) {
+            return;
+          }
+
+          await removeMemberMutation.mutateAsync(memberRemovalTarget.userId);
+          setMemberRemovalTarget(null);
+        }}
+        open={Boolean(memberRemovalTarget)}
+        title="Remover participante"
+      />
 
       <Modal
         title="Editar descricao do projeto"
@@ -438,17 +480,12 @@ export function ProjectDetailPage() {
                       <button
                         className="text-button"
                         disabled={removeMemberMutation.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Remover ${member.user.name} do projeto?`,
-                            )
-                          ) {
-                            void removeMemberMutation.mutateAsync(
-                              member.user.id,
-                            );
-                          }
-                        }}
+                        onClick={() =>
+                          setMemberRemovalTarget({
+                            name: member.user.name,
+                            userId: member.user.id,
+                          })
+                        }
                         style={{ marginLeft: 4, color: '#8c2f25', fontSize: '0.8rem' }}
                         type="button"
                       >

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { formatDateTime } from '../../app/formatters';
+import { ConfirmModal } from '../../components/confirm-modal';
 import type { CardComment } from '../../types/api';
 
 type ChecklistReference = {
@@ -52,6 +53,8 @@ export function CardCommentsSection({
   const [draftComment, setDraftComment] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState('');
+  const [commentPendingDelete, setCommentPendingDelete] =
+    useState<CardComment | null>(null);
   const referencesById = new Map(
     checklistReferences.map((reference) => [reference.id, reference]),
   );
@@ -100,11 +103,12 @@ export function CardCommentsSection({
   }
 
   async function handleDelete(commentId: string) {
-    if (!onDelete || !window.confirm('Apagar esta descricao?')) {
+    if (!onDelete) {
       return;
     }
 
     await onDelete(commentId);
+    setCommentPendingDelete(null);
   }
 
   function hasBeenEdited(comment: CardComment) {
@@ -224,7 +228,7 @@ export function CardCommentsSection({
                   <button
                     className="text-button text-button-danger"
                     disabled={isBusy}
-                    onClick={() => void handleDelete(comment.id)}
+                    onClick={() => setCommentPendingDelete(comment)}
                     type="button"
                   >
                     Excluir
@@ -271,6 +275,20 @@ export function CardCommentsSection({
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        confirmLabel="Excluir"
+        description="Apagar esta descricao? Esta acao nao pode ser desfeita."
+        isConfirming={isBusy}
+        onClose={() => setCommentPendingDelete(null)}
+        onConfirm={() =>
+          commentPendingDelete
+            ? handleDelete(commentPendingDelete.id)
+            : undefined
+        }
+        open={Boolean(commentPendingDelete)}
+        title="Excluir descricao"
+      />
     </section>
   );
 }
