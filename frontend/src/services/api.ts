@@ -251,7 +251,12 @@ export const api = {
 
   createFolder(
     token: string,
-    payload: { name: string; sectorId: string; visibility?: FolderVisibility },
+    payload: {
+      name: string;
+      parentId?: string;
+      sectorId?: string;
+      visibility?: FolderVisibility;
+    },
   ) {
     return request<ProjectFolder>('/folders', {
       method: 'POST',

@@ -20,12 +20,14 @@ export const initialProjectForm: ProjectFormState = {
 
 export type FolderFormState = {
   name: string;
+  parentId: string;
   sectorId: string;
   visibility: 'SECTOR' | 'SECRETARIAT';
 };
 
 export const initialFolderForm: FolderFormState = {
   name: '',
+  parentId: '',
   sectorId: '',
   visibility: 'SECTOR',
 };

@@ -7,10 +7,15 @@ export class CreateFolderDto {
   @MinLength(1)
   name!: string;
 
+  @IsOptional()
   @IsUUID()
-  sectorId!: string;
+  sectorId?: string;
 
   @IsOptional()
   @IsEnum(FolderVisibility)
   visibility?: FolderVisibility;
+
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
 }

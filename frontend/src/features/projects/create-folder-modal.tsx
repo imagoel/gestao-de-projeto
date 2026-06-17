@@ -1,4 +1,5 @@
 import { Modal } from '../../components/modal';
+import type { ProjectFolder } from '../../types/api';
 import type { AvailableSector, FolderFormState } from './projects-types';
 
 type CreateFolderModalProps = {
@@ -10,6 +11,7 @@ type CreateFolderModalProps = {
   onClose: () => void;
   onCreate: (form: FolderFormState) => void;
   open: boolean;
+  parentFolder?: ProjectFolder | null;
 };
 
 export function CreateFolderModal({
@@ -21,7 +23,10 @@ export function CreateFolderModal({
   onClose,
   onCreate,
   open,
+  parentFolder,
 }: CreateFolderModalProps) {
+  const isSubfolder = Boolean(parentFolder);
+
   function submitForm() {
     onCreate({
       ...form,
@@ -31,8 +36,12 @@ export function CreateFolderModal({
 
   return (
     <Modal
-      title="Nova pasta"
-      description="Pastas pertencem a um setor. Membros criam pastas apenas nos setores vinculados ao proprio usuario."
+      title={isSubfolder ? 'Nova subpasta' : 'Nova pasta'}
+      description={
+        isSubfolder
+          ? 'Subpastas herdam setor e visibilidade da pasta principal.'
+          : 'Pastas pertencem a um setor. Membros criam pastas apenas nos setores vinculados ao proprio usuario.'
+      }
       open={open}
       onClose={onClose}
       footer={
@@ -42,11 +51,11 @@ export function CreateFolderModal({
           </button>
           <button
             className="primary-button"
-            disabled={isPending || !form.name.trim() || !form.sectorId}
+            disabled={isPending || !form.name.trim() || (!isSubfolder && !form.sectorId)}
             onClick={submitForm}
             type="button"
           >
-            {isPending ? 'Criando...' : 'Criar pasta'}
+            {isPending ? 'Criando...' : isSubfolder ? 'Criar subpasta' : 'Criar pasta'}
           </button>
         </>
       }
@@ -62,7 +71,11 @@ export function CreateFolderModal({
             id="new-folder-name"
             onChange={(event) => onChange({ ...form, name: event.target.value })}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && form.name.trim() && form.sectorId) {
+              if (
+                event.key === 'Enter' &&
+                form.name.trim() &&
+                (isSubfolder || form.sectorId)
+              ) {
                 event.preventDefault();
                 submitForm();
               }
@@ -71,7 +84,14 @@ export function CreateFolderModal({
             value={form.name}
           />
         </div>
-        <div className="form-row">
+        {parentFolder ? (
+          <p className="field-helper">
+            Esta subpasta ficara dentro de {parentFolder.name} e usara{' '}
+            {parentFolder.sector.secretariat.name} / {parentFolder.sector.name}.
+          </p>
+        ) : null}
+        {!isSubfolder ? (
+          <div className="form-row">
           <div className="field-group">
             <label className="field-label" htmlFor="new-folder-sector">
               Setor
@@ -111,7 +131,8 @@ export function CreateFolderModal({
               <option value="SECRETARIAT">Publica da secretaria</option>
             </select>
           </div>
-        </div>
+          </div>
+        ) : null}
         {error ? <p className="form-error">{error}</p> : null}
       </div>
     </Modal>

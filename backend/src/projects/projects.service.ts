@@ -42,6 +42,15 @@ const projectDetailsInclude = {
   },
   folder: {
     include: {
+      parent: {
+        include: {
+          sector: {
+            include: {
+              secretariat: true,
+            },
+          },
+        },
+      },
       sector: {
         include: {
           secretariat: true,

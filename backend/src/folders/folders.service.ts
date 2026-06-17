@@ -13,6 +13,15 @@ import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 
 const folderInclude = {
+  parent: {
+    include: {
+      sector: {
+        include: {
+          secretariat: true,
+        },
+      },
+    },
+  },
   sector: {
     include: {
       secretariat: true,
@@ -52,12 +61,27 @@ export class FoldersService {
   }
 
   async create(user: AuthenticatedUser, dto: CreateFolderDto) {
-    await this.ensureSectorCreateAccess(user, dto.sectorId);
+    const parentFolder = dto.parentId
+      ? await this.ensureParentFolderForSubfolder(user, dto.parentId)
+      : null;
+
+    if (!parentFolder && !dto.sectorId) {
+      throw new BadRequestException('Informe o setor da pasta.');
+    }
+
+    const sectorId = parentFolder?.sectorId ?? dto.sectorId!;
+    const visibility = parentFolder?.visibility ?? dto.visibility ?? FolderVisibility.SECTOR;
+
+    if (!parentFolder) {
+      await this.ensureSectorCreateAccess(user, sectorId);
+    }
+
     return this.prisma.projectFolder.create({
       data: {
         name: dto.name.trim(),
-        sectorId: dto.sectorId,
-        visibility: dto.visibility ?? FolderVisibility.SECTOR,
+        sectorId,
+        visibility,
+        parentId: parentFolder?.id,
         createdById: user.id,
       },
       include: folderInclude,
@@ -66,26 +90,74 @@ export class FoldersService {
 
   async update(user: AuthenticatedUser, id: string, dto: UpdateFolderDto) {
     await this.ensureFolderManageAccess(user, id);
+
+    const folder = await this.prisma.projectFolder.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        parentId: true,
+        sectorId: true,
+        visibility: true,
+      },
+    });
+
+    if (!folder) {
+      throw new NotFoundException('Pasta nao encontrada.');
+    }
+
+    if (folder.parentId && (dto.sectorId || dto.visibility)) {
+      throw new BadRequestException(
+        'Subpastas herdam setor e visibilidade da pasta principal.',
+      );
+    }
+
     if (dto.sectorId) {
       await this.ensureSectorCreateAccess(user, dto.sectorId);
     }
 
-    return this.prisma.projectFolder.update({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.projectFolder.update({
+        where: { id },
+        data: {
+          name: dto.name?.trim(),
+          sectorId: dto.sectorId,
+          visibility: dto.visibility,
+        },
+      });
+
+      if (!folder.parentId && (dto.sectorId || dto.visibility)) {
+        await tx.projectFolder.updateMany({
+          where: { parentId: id },
+          data: {
+            sectorId: dto.sectorId ?? folder.sectorId,
+            visibility: dto.visibility ?? folder.visibility,
+          },
+        });
+      }
+    });
+
+    return this.prisma.projectFolder.findUniqueOrThrow({
       where: { id },
-      data: {
-        name: dto.name?.trim(),
-        sectorId: dto.sectorId,
-        visibility: dto.visibility,
-      },
       include: folderInclude,
     });
   }
 
   async remove(user: AuthenticatedUser, id: string) {
     await this.ensureFolderManageAccess(user, id);
-    const projectCount = await this.prisma.project.count({
-      where: { folderId: id },
-    });
+    const [projectCount, childCount] = await Promise.all([
+      this.prisma.project.count({
+        where: { folderId: id },
+      }),
+      this.prisma.projectFolder.count({
+        where: { parentId: id },
+      }),
+    ]);
+
+    if (childCount > 0) {
+      throw new BadRequestException(
+        'Nao e possivel apagar uma pasta que ainda possui subpastas.',
+      );
+    }
 
     if (projectCount > 0) {
       throw new BadRequestException(
@@ -115,6 +187,35 @@ export class FoldersService {
     }
 
     return sector;
+  }
+
+  private async ensureParentFolderForSubfolder(
+    user: AuthenticatedUser,
+    parentId: string,
+  ) {
+    await this.ensureFolderManageAccess(user, parentId);
+
+    const parentFolder = await this.prisma.projectFolder.findUnique({
+      where: { id: parentId },
+      select: {
+        id: true,
+        parentId: true,
+        sectorId: true,
+        visibility: true,
+      },
+    });
+
+    if (!parentFolder) {
+      throw new NotFoundException('Pasta principal nao encontrada.');
+    }
+
+    if (parentFolder.parentId) {
+      throw new BadRequestException(
+        'Subpastas podem ser criadas apenas dentro de pastas principais.',
+      );
+    }
+
+    return parentFolder;
   }
 
   private async ensureSectorCreateAccess(user: AuthenticatedUser, sectorId: string) {

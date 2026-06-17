@@ -34,6 +34,13 @@ export function CreateProjectModal({
   open,
   usersLoading,
 }: CreateProjectModalProps) {
+  function formatFolderOption(folder: ProjectFolder) {
+    const basePath = `${folder.sector.secretariat.name} / ${folder.sector.name}`;
+    return folder.parent
+      ? `${basePath} / ${folder.parent.name} / ${folder.name}`
+      : `${basePath} / ${folder.name}`;
+  }
+
   return (
     <Modal
       description="Cada projeto do MVP nasce com um board unico e as colunas fixas A fazer, Em andamento e Concluido."
@@ -99,7 +106,7 @@ export function CreateProjectModal({
             <option value="">Selecione</option>
             {folderOptions.map((folder) => (
               <option key={folder.id} value={folder.id}>
-                {folder.sector.secretariat.name} / {folder.sector.name} / {folder.name}
+                {formatFolderOption(folder)}
               </option>
             ))}
           </select>

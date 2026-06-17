@@ -24,7 +24,6 @@ import {
   type FolderFormState,
   type ProjectFormState,
 } from '../features/projects/projects-types';
-import { useProjectRowScroll } from '../features/projects/use-project-row-scroll';
 import { ApiError, api } from '../services/api';
 import type { Project, ProjectFolder } from '../types/api';
 
@@ -78,6 +77,7 @@ export function ProjectsPage() {
   const [renameProjectError, setRenameProjectError] = useState<string | null>(null);
   const [folderPendingDelete, setFolderPendingDelete] =
     useState<ProjectFolder | null>(null);
+  const [subfolderParent, setSubfolderParent] = useState<ProjectFolder | null>(null);
 
   const renameFolderMutation = useMutation({
     mutationFn: (payload: { folderId: string; name: string }) =>
@@ -134,6 +134,9 @@ export function ProjectsPage() {
     (projectsQuery.data ?? []).forEach((project) => {
       if (project.folder) {
         foldersById.set(project.folder.id, project.folder);
+        if (project.folder.parent) {
+          foldersById.set(project.folder.parent.id, project.folder.parent);
+        }
       }
     });
     return Array.from(foldersById.values());
@@ -151,6 +154,30 @@ export function ProjectsPage() {
     return groups;
   }, [projectsQuery.data, visibleFolders]);
 
+  const childFoldersByParentId = useMemo(() => {
+    const groups = new Map<string, ProjectFolder[]>();
+
+    visibleFolders.forEach((folder) => {
+      if (!folder.parentId) {
+        return;
+      }
+
+      if (!groups.has(folder.parentId)) {
+        groups.set(folder.parentId, []);
+      }
+
+      groups.get(folder.parentId)!.push(folder);
+    });
+
+    groups.forEach((folders) => folders.sort((a, b) => a.name.localeCompare(b.name)));
+    return groups;
+  }, [visibleFolders]);
+
+  const topLevelFolders = useMemo(
+    () => visibleFolders.filter((folder) => !folder.parentId),
+    [visibleFolders],
+  );
+
   const organizationGroups = useMemo(() => {
     const secretariatGroups = new Map<
       string,
@@ -161,7 +188,7 @@ export function ProjectsPage() {
       }
     >();
 
-    visibleFolders.forEach((folder) => {
+    topLevelFolders.forEach((folder) => {
       const secretariat = folder.sector.secretariat;
       if (!secretariatGroups.has(secretariat.id)) {
         secretariatGroups.set(secretariat.id, {
@@ -187,17 +214,7 @@ export function ProjectsPage() {
       ...secretariat,
       sectors: Array.from(secretariat.sectors.values()),
     }));
-  }, [visibleFolders]);
-
-  const projectRowRefreshSignal = useMemo(
-    () => ({ groupedProjects, openFolders }),
-    [groupedProjects, openFolders],
-  );
-  const {
-    getProjectRowShellClassName,
-    handleProjectRowScroll,
-    registerProjectRow,
-  } = useProjectRowScroll(projectRowRefreshSignal);
+  }, [topLevelFolders]);
 
   const createProjectMutation = useMutation({
     mutationFn: () =>
@@ -231,12 +248,14 @@ export function ProjectsPage() {
     mutationFn: (payload: FolderFormState) =>
       api.createFolder(token!, {
         name: payload.name,
-        sectorId: payload.sectorId,
-        visibility: payload.visibility,
+        parentId: payload.parentId || undefined,
+        sectorId: payload.parentId ? undefined : payload.sectorId,
+        visibility: payload.parentId ? undefined : payload.visibility,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['folders'] });
       setIsCreateFolderOpen(false);
+      setSubfolderParent(null);
       setNewFolderForm(initialFolderForm);
       setFolderError(null);
     },
@@ -348,6 +367,18 @@ export function ProjectsPage() {
     setRenameProjectError(null);
   }
 
+  function handleCreateSubfolder(folder: ProjectFolder) {
+    setSubfolderParent(folder);
+    setNewFolderForm({
+      ...initialFolderForm,
+      parentId: folder.id,
+      sectorId: folder.sectorId,
+      visibility: folder.visibility,
+    });
+    setFolderError(null);
+    setIsCreateFolderOpen(true);
+  }
+
   function handleDeleteFolder(folder: ProjectFolder) {
     setFolderPendingDelete(folder);
   }
@@ -360,8 +391,10 @@ export function ProjectsPage() {
           onClick={() => {
             setNewFolderForm({
               ...initialFolderForm,
+              parentId: '',
               sectorId: availableSectors[0]?.id ?? '',
             });
+            setSubfolderParent(null);
             setFolderError(null);
             setIsCreateFolderOpen(true);
           }}
@@ -389,21 +422,26 @@ export function ProjectsPage() {
   function renderFolderSection(folder: ProjectFolder) {
     const key = folder.id;
     const projects = groupedProjects.get(key) ?? [];
+    const subfolders =
+      childFoldersByParentId.get(key)?.map((childFolder) => ({
+        folder: childFolder,
+        projects: groupedProjects.get(childFolder.id) ?? [],
+      })) ?? [];
     const isOpen = openFolders.has(key);
 
     return (
       <ProjectFolderSection
-        canManage={canManageFolder(folder)}
+        canManageFolder={canManageFolder}
         canMoveProject={canMoveProject}
         deleteFolderDisabled={deleteFolderMutation.isPending}
         dragOverKey={dragOverKey}
         draggedProjectId={draggedProjectId}
         folder={folder}
-        getRowShellClassName={getProjectRowShellClassName}
         isAdmin={isAdmin}
         isOpen={isOpen}
         key={key}
         onClearDragOver={() => setDragOverKey(null)}
+        onCreateSubfolder={handleCreateSubfolder}
         onDelete={handleDeleteFolder}
         onDropProject={handleProjectDrop}
         onFolderDragOver={setDragOverKey}
@@ -412,10 +450,9 @@ export function ProjectsPage() {
         onProjectDragStart={handleProjectDragStart}
         onRename={handleRenameFolder}
         onRenameProject={handleRenameProject}
-        onRowScroll={handleProjectRowScroll}
         onToggle={toggleFolder}
         projects={projects}
-        registerProjectRow={registerProjectRow}
+        subfolders={subfolders}
       />
     );
   }
@@ -447,7 +484,7 @@ export function ProjectsPage() {
       ) : null}
 
       {!projectsQuery.isLoading && !projectsQuery.isError ? (
-        visibleFolders.length > 0 ? (
+        topLevelFolders.length > 0 ? (
           <div className="organization-list">
             {organizationGroups.map((secretariat) => (
               <div className="secretariat-section" key={secretariat.id}>
@@ -541,9 +578,13 @@ export function ProjectsPage() {
         form={newFolderForm}
         isPending={createFolderMutation.isPending}
         onChange={setNewFolderForm}
-        onClose={() => setIsCreateFolderOpen(false)}
+        onClose={() => {
+          setIsCreateFolderOpen(false);
+          setSubfolderParent(null);
+        }}
         onCreate={(form) => void createFolderMutation.mutateAsync(form)}
         open={isCreateFolderOpen}
+        parentFolder={subfolderParent}
       />
 
       <CreateProjectModal

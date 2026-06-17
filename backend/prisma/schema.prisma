@@ -161,8 +161,13 @@ model ProjectFolder {
   createdById String? @map("created_by_id")
   createdBy   User?   @relation("ProjectFolderCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
+  parentId String?         @map("parent_id")
+  parent   ProjectFolder?  @relation("ProjectFolderHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children ProjectFolder[] @relation("ProjectFolderHierarchy")
+
   projects Project[]
 
+  @@index([parentId])
   @@map("project_folders")
 }
 
