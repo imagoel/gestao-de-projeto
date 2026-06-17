@@ -155,16 +155,22 @@
   padding: 4px 0 0;
   border-radius: 10px;
   border: 1px dashed transparent;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, padding 0.15s ease;
+}
+
+.subfolder-section-can-drop {
+  min-height: 52px;
+  padding: 8px 10px 10px;
+  border-color: rgba(24, 95, 165, 0.18);
+  background: rgba(255, 255, 255, 0.38);
 }
 
 .subfolder-section-drop {
-  background: rgba(24, 95, 165, 0.08);
-  border-color: rgba(24, 95, 165, 0.34);
+  background: rgba(24, 95, 165, 0.1);
+  border-color: rgba(24, 95, 165, 0.45);
 }
 
-.subfolder-header,
-.loose-project-header {
+.subfolder-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -219,13 +225,7 @@
 
 .loose-project-section {
   display: grid;
-  gap: 8px;
-}
-
-.loose-project-header {
-  color: #6f6b63;
-  font-size: 0.88rem;
-  font-weight: 700;
+  gap: 0;
 }
 
 .project-horizontal-list {

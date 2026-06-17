@@ -102,20 +102,26 @@ export function ProjectFolderSection({
 
   function handleDrop(event: DragEvent<HTMLElement>, targetFolderId: string) {
     event.preventDefault();
+    event.stopPropagation();
     onClearDragOver();
     const projectId = event.dataTransfer.getData('text/plain');
     if (!projectId) return;
+    setClosedSubfolderIds((current) =>
+      current.filter((currentFolderId) => currentFolderId !== targetFolderId),
+    );
     onDropProject(projectId, targetFolderId);
   }
 
   function handleDragOver(event: DragEvent<HTMLElement>, targetFolderId: string) {
     if (!draggedProjectId) return;
     event.preventDefault();
+    event.stopPropagation();
     event.dataTransfer.dropEffect = 'move';
     if (dragOverKey !== targetFolderId) onFolderDragOver(targetFolderId);
   }
 
   function handleDragLeave(event: DragEvent<HTMLElement>) {
+    event.stopPropagation();
     if (!event.currentTarget.contains(event.relatedTarget as Node)) {
       onClearDragOver();
     }
@@ -213,7 +219,13 @@ export function ProjectFolderSection({
 
     return (
       <section
-        className={`subfolder-section${isSubfolderDragOver ? ' subfolder-section-drop' : ''}`}
+        className={[
+          'subfolder-section',
+          draggedProjectId ? 'subfolder-section-can-drop' : '',
+          isSubfolderDragOver ? 'subfolder-section-drop' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         key={group.folder.id}
         onDragLeave={handleDragLeave}
         onDragOver={(event) => handleDragOver(event, group.folder.id)}
@@ -339,12 +351,6 @@ export function ProjectFolderSection({
 
             {projects.length > 0 ? (
               <section className="loose-project-section">
-                <header className="loose-project-header">
-                  <span>Projetos sem subpasta</span>
-                  <span className="folder-count">
-                    {projects.length} projeto{projects.length === 1 ? '' : 's'}
-                  </span>
-                </header>
                 <div className="project-horizontal-list" role="list">
                   {projects.map((project) => renderLooseProject(project))}
                 </div>
