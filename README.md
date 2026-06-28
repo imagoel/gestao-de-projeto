@@ -8,12 +8,12 @@ O projeto foi construido para atender um MVP enxuto de gestao interna, com foco 
 
 - autenticacao por e-mail e senha
 - controle de acesso com perfis globais `ADMIN` e `MEMBER`
-- organizacao por secretaria, setor e pasta
+- organizacao por secretaria, setor, pasta e subpasta
 - projetos com board unico
 - colunas fixas de Kanban
 - cards com prioridade, responsavel, prazo opcional, checklist e historico
 - comentarios e arquivamento de cards
-- gestao basica de usuarios
+- gestao de usuarios, secretarias, setores e vinculos de acesso
 
 No contexto da GTI, este repositorio representa um projeto-produto: ele e o sistema usado para acompanhar outros projetos internos da area.
 
@@ -68,6 +68,8 @@ No contexto da GTI, este repositorio representa um projeto-produto: ele e o sist
 - edicao de cards, checklist, comentarios e colunas exige participacao no projeto
 - cards usam prioridade, responsavel principal, prazo opcional e checklist
 - cards concluidos podem ser arquivados
+- projetos podem ser movidos entre pastas/subpastas quando o usuario tem permissao
+- subpastas podem ser recolhidas para melhorar a leitura da tela de projetos
 
 ## Organizacao e permissoes
 
@@ -77,10 +79,11 @@ O modelo atual organiza os projetos na seguinte arvore:
 Secretaria
   Setor
     Pasta
-      Projeto
+      Subpasta opcional
+        Projeto
 ```
 
-Cada projeto pertence obrigatoriamente a uma pasta. A pasta pertence a um setor e possui uma regra de visibilidade:
+Cada projeto pertence obrigatoriamente a uma pasta. Pastas podem ter subpastas, sempre dentro do mesmo setor raiz. A pasta pertence a um setor e possui uma regra de visibilidade:
 
 - `SECTOR`: apenas usuarios vinculados ao mesmo setor visualizam a pasta e seus projetos.
 - `SECRETARIAT`: usuarios vinculados a qualquer setor da mesma secretaria visualizam a pasta e seus projetos.
@@ -97,15 +100,15 @@ Papeis dentro do projeto:
 
 - `MANAGER` / Gestor: edita o projeto, gerencia participantes, move o projeto entre pastas acessiveis e pode apagar o projeto.
 - `MEMBER` / Membro: cria e edita cards, checklist, comentarios e movimentacoes no projeto.
-- `VIEWER` / Visualizador: visualiza o projeto e o quadro, sem permissao para criar ou alterar cards.
 
 Observacoes:
 
 - A leitura sem edicao tambem pode vir da visibilidade por pasta/setor, mesmo sem participacao direta no projeto.
 - Usuario que enxerga um projeto somente por setor/pasta nao consegue editar cards nem comentar ate ser adicionado como membro do projeto.
-- Ao adicionar participantes depois da criacao, gestores escolhem apenas entre `Membro` e `Visualizador`; novos gestores nao sao concedidos por esse fluxo.
+- Ao adicionar participantes depois da criacao, gestores concedem o papel `Membro`; novos gestores nao sao concedidos por esse fluxo.
 - O criador da pasta pode renomear ou apagar a propria pasta enquanto ela estiver vazia.
 - Admins podem criar, renomear e apagar pastas apenas nos setores aos quais tambem estejam vinculados.
+- Subpastas herdam o contexto organizacional da pasta raiz e ajudam a agrupar projetos dentro de uma mesma area.
 - O dono do projeto e criado como `MANAGER` / Gestor.
 
 ## Como rodar localmente
@@ -228,8 +231,11 @@ Para atualizar uma stack ja publicada:
 ## Observacoes operacionais
 
 - o sistema possui suporte a cards arquivados e restauracao no board
-- o board foi refinado para usar drag-and-drop, checklist, comentarios/historico e cards compactos
-- a tela de projetos agrupa por secretaria, setor e pasta
+- o board foi refinado para usar drag-and-drop de cards, checklist reorganizavel, comentarios/historico e cards compactos
+- a tela de projetos agrupa por secretaria, setor, pasta e subpasta
+- projetos podem ser arrastados entre pastas/subpastas com indicacao visual de destino
+- pastas e subpastas podem ser recolhidas para reduzir ruido visual em areas com muitos projetos
+- confirmacoes criticas usam modais internos em vez de dialogs nativos do navegador
 - a tela de usuarios permite buscar, filtrar, paginar, alterar status e vincular membros a secretarias/setores
 - secretarias e setores podem ser cadastrados pela tela de usuarios
 - a documentacao operacional detalhada da GTI esta sendo consolidada de forma privada no Notion
