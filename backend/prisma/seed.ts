@@ -53,10 +53,10 @@ const INITIAL_ORGANIZATION: Record<string, string[]> = {
     'DIREC',
     'DTRIB',
     'DOP',
+    'GAB',
     'GELIC',
     'GEPLAN',
     'GERAM',
-    'GTI',
     'PUBLICO',
     'SIMP',
     'SUCONT',
@@ -176,6 +176,47 @@ const INITIAL_ORGANIZATION: Record<string, string[]> = {
   SESAU: [],
 };
 
+async function deleteUnusedDeprecatedSector(
+  prisma: PrismaService,
+  secretariatName: string,
+  sectorName: string,
+) {
+  const sector = await prisma.sector.findFirst({
+    where: {
+      name: sectorName,
+      secretariat: {
+        name: secretariatName,
+      },
+    },
+    select: {
+      id: true,
+      _count: {
+        select: {
+          folders: true,
+          userMemberships: true,
+        },
+      },
+    },
+  });
+
+  if (!sector) {
+    return;
+  }
+
+  if (sector._count.folders > 0 || sector._count.userMemberships > 0) {
+    console.warn(
+      `Setor legado ${secretariatName}/${sectorName} mantido porque esta em uso.`,
+    );
+    return;
+  }
+
+  await prisma.sector.delete({
+    where: {
+      id: sector.id,
+    },
+  });
+}
+
 async function main() {
   const prisma = new PrismaService();
 
@@ -249,6 +290,8 @@ async function main() {
       }
     }
   }
+
+  await deleteUnusedDeprecatedSector(prisma, 'SEAFI', 'GTI');
 
   await prisma.$disconnect();
 }
