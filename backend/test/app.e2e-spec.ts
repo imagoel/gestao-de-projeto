@@ -110,7 +110,7 @@ describe('Gestao GTI API (e2e)', () => {
     expect(response.body.user.role).toBe(UserRole.ADMIN);
   });
 
-  it('lets admin create users and rejects duplicate emails', async () => {
+  it('lets admin create users and rejects duplicate logins', async () => {
     const adminToken = await getAdminToken();
 
     await request(app.getHttpServer())
@@ -1031,13 +1031,13 @@ describe('Gestao GTI API (e2e)', () => {
     const created = await request(app.getHttpServer())
       .post('/api/users')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Bea', email: 'bea@empresa.com', password: 'senha12345', role: UserRole.MEMBER })
+      .send({ name: 'Bea', email: 'bea', password: 'senha12345', role: UserRole.MEMBER })
       .expect(201);
 
     const other = await request(app.getHttpServer())
       .post('/api/users')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Caio', email: 'caio@empresa.com', password: 'senha12345', role: UserRole.MEMBER })
+      .send({ name: 'Caio', email: 'caio', password: 'senha12345', role: UserRole.MEMBER })
       .expect(201);
 
     // Update name + password + avatar
@@ -1047,18 +1047,18 @@ describe('Gestao GTI API (e2e)', () => {
       .send({ name: 'Beatriz', password: 'novasenha123', avatarUrl: 'https://x/y.png' })
       .expect(200);
 
-    // Email conflict on update
+    // Login conflict on update
     await request(app.getHttpServer())
       .patch(`/api/users/${created.body.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ email: 'caio@empresa.com' })
+      .send({ email: 'caio' })
       .expect(409);
 
-    // Updating to same email is allowed
+    // Updating to same login is allowed
     await request(app.getHttpServer())
       .patch(`/api/users/${created.body.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ email: 'bea@empresa.com' })
+      .send({ email: 'bea' })
       .expect(200);
 
     // Update non-existing user
@@ -1071,7 +1071,7 @@ describe('Gestao GTI API (e2e)', () => {
     // Login with new password
     await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'bea@empresa.com', password: 'novasenha123' })
+      .send({ email: 'bea', password: 'novasenha123' })
       .expect(201);
 
     await request(app.getHttpServer())
@@ -1085,7 +1085,7 @@ describe('Gestao GTI API (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'bea@empresa.com', password: 'novasenha123' })
+      .send({ email: 'bea', password: 'novasenha123' })
       .expect(401);
 
     // Project create with non-existing owner -> 404

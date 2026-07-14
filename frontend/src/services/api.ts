@@ -83,10 +83,10 @@ async function request<T>(path: string, options: RequestOptions = {}) {
 }
 
 export const api = {
-  login(email: string, password: string) {
+  login(loginIdentifier: string, password: string) {
     return request<AuthResponse>('/auth/login', {
       method: 'POST',
-      body: { email, password },
+      body: { email: loginIdentifier, password },
     });
   },
 

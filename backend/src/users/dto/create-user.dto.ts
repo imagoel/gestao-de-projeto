@@ -3,7 +3,6 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
-  IsEmail,
   IsEnum,
   IsOptional,
   IsString,
@@ -16,7 +15,8 @@ export class CreateUserDto {
   @MinLength(2)
   name!: string;
 
-  @IsEmail()
+  @IsString()
+  @MinLength(2)
   email!: string;
 
   @IsString()

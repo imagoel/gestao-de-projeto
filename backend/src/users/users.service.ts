@@ -173,7 +173,7 @@ export class UsersService {
     });
 
     if (existingUser && existingUser.id !== ignoreUserId) {
-      throw new ConflictException('Ja existe um usuario com este e-mail.');
+      throw new ConflictException('Ja existe um usuario com este login.');
     }
   }
 

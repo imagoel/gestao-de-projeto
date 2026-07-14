@@ -79,14 +79,16 @@ export function UserDrawer({
 
               <div className="field-group">
                 <label className="field-label" htmlFor="user-email">
-                  E-mail
+                  Usuario
                 </label>
                 <input
+                  autoComplete="username"
                   className="field-input"
                   id="user-email"
                   onChange={(event) => onChange({ email: event.target.value })}
+                  placeholder="Login de acesso"
                   required
-                  type="email"
+                  type="text"
                   value={form.email}
                 />
               </div>

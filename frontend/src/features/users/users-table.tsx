@@ -13,7 +13,7 @@ export function UsersTable({ onEditUser, users }: UsersTableProps) {
         <thead>
           <tr>
             <th>Nome</th>
-            <th>E-mail</th>
+            <th>Usuario</th>
             <th>Perfil</th>
             <th>Status</th>
             <th>Vinculos</th>

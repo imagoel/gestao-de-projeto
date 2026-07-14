@@ -3,7 +3,6 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
-  IsEmail,
   IsEnum,
   IsOptional,
   IsString,
@@ -18,7 +17,8 @@ export class UpdateUserDto {
   name?: string;
 
   @IsOptional()
-  @IsEmail()
+  @IsString()
+  @MinLength(2)
   email?: string;
 
   @IsOptional()

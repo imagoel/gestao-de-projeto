@@ -98,7 +98,7 @@ A pasta fica visivel para:
 O admin informa:
 
 - nome;
-- e-mail;
+- usuario/login;
 - senha;
 - perfil global (`ADMIN` ou `MEMBER`);
 - avatar opcional;

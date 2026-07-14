@@ -44,7 +44,7 @@ export function UsersToolbar({
           className="field-input"
           id="users-search"
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Nome ou e-mail"
+          placeholder="Nome ou usuario"
           type="search"
           value={search}
         />

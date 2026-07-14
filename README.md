@@ -6,7 +6,7 @@ Sistema interno de gestao de projetos da GTI, no estilo Kanban/Trello, criado pa
 
 O projeto foi construido para atender um MVP enxuto de gestao interna, com foco em:
 
-- autenticacao por e-mail e senha
+- autenticacao por usuario e senha
 - controle de acesso com perfis globais `ADMIN` e `MEMBER`
 - organizacao por secretaria, setor, pasta e subpasta
 - projetos com board unico

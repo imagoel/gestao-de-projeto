@@ -31,7 +31,7 @@ import { UsersModule } from './users/users.module';
           .default('development'),
         PORT: Joi.number().integer().min(1).max(65535).default(3000),
         SEED_ADMIN_NAME: Joi.string().optional(),
-        SEED_ADMIN_EMAIL: Joi.string().email().optional(),
+        SEED_ADMIN_EMAIL: Joi.string().min(2).optional(),
         SEED_ADMIN_PASSWORD: Joi.string().min(8).optional(),
       }),
     }),

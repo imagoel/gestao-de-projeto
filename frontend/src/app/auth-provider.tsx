@@ -15,7 +15,7 @@ type AuthContextValue = {
   isHydrating: boolean;
   token: string | null;
   user: ApiUser | null;
-  login: (email: string, password: string) => Promise<ApiUser>;
+  login: (loginIdentifier: string, password: string) => Promise<ApiUser>;
   logout: () => void;
   refreshUser: () => Promise<ApiUser | null>;
   syncUser: (nextUser: ApiUser) => void;
@@ -67,8 +67,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, [token]);
 
-  async function login(email: string, password: string) {
-    const session = await api.login(email, password);
+  async function login(loginIdentifier: string, password: string) {
+    const session = await api.login(loginIdentifier, password);
 
     localStorage.setItem(STORAGE_KEY, session.accessToken);
     setToken(session.accessToken);

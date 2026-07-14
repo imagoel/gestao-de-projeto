@@ -11,7 +11,7 @@ export function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { login, user } = useAuth();
-  const [email, setEmail] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +29,7 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
+      await login(loginIdentifier, password);
       navigate(redirectTo, { replace: true });
     } catch (error) {
       setErrorMessage(
@@ -53,17 +53,17 @@ export function LoginPage() {
           <h1 className="login-title">Gestao de projetos</h1>
 
           <div className="field-group">
-            <label className="field-label" htmlFor="email">
-              E-mail
+            <label className="field-label" htmlFor="login-identifier">
+              Usuario
             </label>
             <input
-              autoComplete="email"
+              autoComplete="username"
               className="field-input"
-              id="email"
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="seu@empresa.com"
-              type="email"
-              value={email}
+              id="login-identifier"
+              onChange={(event) => setLoginIdentifier(event.target.value)}
+              placeholder="seu usuario"
+              type="text"
+              value={loginIdentifier}
             />
           </div>
 
